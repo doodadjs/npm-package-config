@@ -1,7 +1,7 @@
 {
-  "name": "package-config",
+  "name": "npm-package-config",
   "version": "0.1.0",
-  "description": "Retrieve any package's configuration",
+  "description": "Retrieves and combines package's configuration like running from `NPM RUN`",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,6 +15,10 @@
 	"README.md",
 	"LICENSE"
   ],
-  "author": "Claude Petit <doodadjs@gmail.com> (https://sourceforge.net/projects/doodad-js/)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sickle2/package-config.git"
+  },
+  "author": "Claude Petit <doodadjs@gmail.com> (https://github.com/sickle2/package-config/)",
   "license": "MIT"
 }
