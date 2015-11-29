@@ -43,12 +43,14 @@ function reduceEnvironment(result) {
 	}, result);
 };
 
-function reducePackageConfig(result, packageConfig, parent) {
+function reducePackageConfig(result, packageConfig, parent, noConfig) {
 	const replaceRegEx = /[^A-Za-z0-9_]/g;
 	if (typeof packageConfig === 'object') {
 		Object.keys(packageConfig).forEach(function(key) {
-			key = key.replace(replaceRegEx, '_');
-			reducePackageConfig(result, packageConfig[key], parent + key + '_');
+			if (!noConfig || (key !== 'config')) {
+				key = key.replace(replaceRegEx, '_');
+				reducePackageConfig(result, packageConfig[key], parent + key + '_');
+			};
 		});
 	} else {
 		result.package[parent.slice(0, -1)] = packageConfig;
@@ -81,6 +83,23 @@ function combine(config) {
 	return Object.assign({}, config.package, config.global, config.user, config.project, config.env);
 };
 
+function beautify(config) {
+	return Object.keys(config).reduce(function(result, key) {
+		const value = config[key];
+		key = key.replace(/__/g, '.').split('_');
+		let r = result;
+		for (let i = 0; i < key.length - 1; i++) {
+			let k = key[i];
+			if (!Object.prototype.hasOwnProperty.call(r, k)) {
+				r[k] = {};
+			};
+			r = r[k];
+		};
+		r[key[key.length - 1]] = value;
+		return result;
+	}, {});
+};
+
 module.exports = {
 	list: function list(/*optional*/packageName, /*optional*/options) {
 		options = options || {};
@@ -93,8 +112,7 @@ module.exports = {
 			env: {}, 
 		};
 		
-		const _module = (module.id === 'repl' ? module : module.parent || module);
-		
+		const _module = ((module.parent && (module.parent.id !== 'repl')) ? module.parent : module);
 		let _package = _require(_module, './package.json');
 		if (!packageName || (packageName === _package.name)) {
 			packageName = _package.name;
@@ -103,7 +121,8 @@ module.exports = {
 			_package = _require(_module, packageName + '/package.json');
 		};
 	
-		reducePackageConfig(config, _package.config || {}, '');
+		reducePackageConfig(config, _package, 'package_', true);
+		reducePackageConfig(config, _package.config, '');
 		
 		const path = require('path'),
 			cp = require('child_process'),
@@ -141,8 +160,14 @@ module.exports = {
 			
 			return listNpm()
 				.then(listProject)
-				.then(combine);
-				
+				.then(combine)
+				.then(function(result) {
+					if (options.beautify) {
+						return beautify(result);
+					} else {
+						return result;
+					};
+				})
 		} else {
 			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf8', cwd: packageFolder});
 			proceed(packageName, config, cp.execSync('npm config list', {encoding: 'utf8', cwd: packageFolder}));
@@ -153,7 +178,11 @@ module.exports = {
 					throw ex;
 				};
 			};
-			return combine(config);
+			let result = combine(config);
+			if (options.beautify) {
+				result = beautify(result);
+			};
+			return result;
 		};
 		
 	},
