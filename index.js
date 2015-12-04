@@ -35,21 +35,24 @@ function reduceEnvironment(result) {
 		envKeys = Object.keys(process.env);
 
 	const config = envKeys.reduce(function(result, key) {
-		key = key.toLowerCase(); // keys are case insensitive
-		if (key.startsWith(NPM_KEY)) {
+		if (key.toLowerCase().startsWith(NPM_KEY)) {
 			result.env[key.slice(NPM_KEY.length)] = process.env[key];
 		};
 		return result;
 	}, result);
 };
 
-function reducePackageConfig(result, packageConfig, parent, noConfig) {
+function reducePackageConfig(result, packageConfig, parent, type) {
 	const replaceRegEx = /[^A-Za-z0-9_]/g;
 	if (typeof packageConfig === 'object') {
 		Object.keys(packageConfig).forEach(function(key) {
-			if (!noConfig || (key !== 'config')) {
+			if (
+					((type === 'package') && (key !== 'config') && (key !== 'dependencies')) ||
+					(type === 'config')
+				) {
+				const val = packageConfig[key];
 				key = key.replace(replaceRegEx, '_');
-				reducePackageConfig(result, packageConfig[key], parent + key + '_');
+				reducePackageConfig(result, val, parent + key + '_', type);
 			};
 		});
 	} else {
@@ -57,7 +60,7 @@ function reducePackageConfig(result, packageConfig, parent, noConfig) {
 	};
 };
 
-function proceed(packageName, config, fileContent, /*optional*/section) {
+function parse(packageName, config, fileContent, /*optional*/section) {
 	const varPrefix = packageName + ':';
 	let currentSection = section;
 	return fileContent.split('\n').filter(function(line) {
@@ -69,11 +72,15 @@ function proceed(packageName, config, fileContent, /*optional*/section) {
 				currentSection = 'user';
 			} else if (currentSection) {
 				line = line.trim('\r').slice(varPrefix.length).split('=', 2);
-				let val = line[1].trim();
-				if (val.startsWith('"')) {
-					val = JSON.parse(val);
+				const key = line[0].trim();
+				if (key) {
+					let val = line[1].trim();
+					if (val.startsWith('"')) {
+						//console.log(val);
+						val = JSON.parse(val);
+					};
+					result[currentSection][key] = val;
 				};
-				result[currentSection][line[0].trim()] = val;
 			};
 			return result;
 		}, config);
@@ -90,12 +97,19 @@ function beautify(config) {
 		let r = result;
 		for (let i = 0; i < key.length - 1; i++) {
 			let k = key[i];
+			if (!k) {
+				continue;
+			};
 			if (!Object.prototype.hasOwnProperty.call(r, k)) {
 				r[k] = {};
 			};
 			r = r[k];
 		};
-		r[key[key.length - 1]] = value;
+		key = key[key.length - 1];
+		if (!key) {
+			key = '_';
+		};
+		r[key] = value;
 		return result;
 	}, {});
 };
@@ -120,9 +134,9 @@ module.exports = {
 		} else {
 			_package = _require(_module, packageName + '/package.json');
 		};
-	
-		reducePackageConfig(config, _package, 'package_', true);
-		reducePackageConfig(config, _package.config, '');
+
+		reducePackageConfig(config, _package, 'package_', 'package');
+		reducePackageConfig(config, _package.config, '_', 'config');
 		
 		const path = require('path'),
 			cp = require('child_process'),
@@ -137,7 +151,7 @@ module.exports = {
 						if (err) {
 							reject(err);
 						} else {
-							resolve(proceed(packageName, config, fileContent));
+							resolve(parse(packageName, config, fileContent));
 						};
 					});
 				});
@@ -152,7 +166,7 @@ module.exports = {
 								resolve(config);
 							};
 						} else {
-							resolve(proceed(packageName, config, fileContent, 'project'));
+							resolve(parse(packageName, config, fileContent, 'project'));
 						};
 					});
 				});
@@ -167,12 +181,12 @@ module.exports = {
 					} else {
 						return result;
 					};
-				})
+				});
 		} else {
 			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf8', cwd: packageFolder});
-			proceed(packageName, config, cp.execSync('npm config list', {encoding: 'utf8', cwd: packageFolder}));
+			parse(packageName, config, cp.execSync('npm config list', {encoding: 'utf8', cwd: packageFolder}));
 			try {
-				proceed(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf8'}), 'project');
+				parse(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf8'}), 'project');
 			} catch(ex) {
 				if (ex.code !== 'ENOENT') {
 					throw ex;
