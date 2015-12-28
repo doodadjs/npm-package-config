@@ -1,7 +1,7 @@
 {
   "name": "npm-package-config",
-  "version": "0.1.2",
-  "description": "Retrieves and combines package's configuration like running from `NPM RUN`",
+  "version": "0.1.3",
+  "description": "Retrieves and combines package's configuration like running from 'NPM RUN'",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -126,8 +126,26 @@ module.exports = {
 			env: {}, 
 		};
 		
-		const _module = ((module.parent && (module.parent.id !== 'repl')) ? module.parent : module);
-		let _package = _require(_module, './package.json');
+
+		let parent = module.parent,
+			prevParent = null,
+			_package = null,
+			_module = null;
+		while (parent && (parent.id !== 'repl') && (parent !== prevParent)) {
+			prevParent = parent;
+			try {
+				_package = _require(parent, './package.json');
+				_module = parent;
+				break;
+			} catch(ex) {
+				parent = parent.parent;
+			};
+		};
+		if (!_package) {
+			_module = module;
+			_package = _require(_module, './package.json');
+		};
+		
 		if (!packageName || (packageName === _package.name)) {
 			packageName = _package.name;
 			reduceEnvironment(config);
