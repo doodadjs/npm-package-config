@@ -109,7 +109,9 @@ function beautify(config) {
 		if (!key) {
 			key = '_';
 		};
-		r[key] = value;
+		if (typeof r === 'object') {
+			r[key] = value;
+		};
 		return result;
 	}, {});
 };
@@ -165,7 +167,7 @@ module.exports = {
 		if (options.async) {
 			function listNpm() {
 				return new Promise(function(resolve, reject) {
-					cp.exec('npm config list', {encoding: 'utf8', cwd: packageFolder}, function(err, fileContent) {
+					cp.exec('npm config list', {encoding: 'utf-8', cwd: packageFolder}, function(err, fileContent) {
 						if (err) {
 							reject(err);
 						} else {
@@ -176,7 +178,7 @@ module.exports = {
 			};
 			function listProject() {
 				return new Promise(function(resolve, reject) {
-					fs.readFile(packageFolder + '/.npmrc', {encoding: 'utf8'}, function(err, fileContent) {
+					fs.readFile(packageFolder + '/.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
 						if (err) {
 							if (err.code !== 'ENOENT') {
 								reject(err);
@@ -201,10 +203,10 @@ module.exports = {
 					};
 				});
 		} else {
-			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf8', cwd: packageFolder});
-			parse(packageName, config, cp.execSync('npm config list', {encoding: 'utf8', cwd: packageFolder}));
+			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf-8', cwd: packageFolder});
+			parse(packageName, config, cp.execSync('npm config list', {encoding: 'utf-8', cwd: packageFolder}));
 			try {
-				parse(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf8'}), 'project');
+				parse(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf-8'}), 'project');
 			} catch(ex) {
 				if (ex.code !== 'ENOENT') {
 					throw ex;
