@@ -4,7 +4,7 @@ Normally, this information is only accessible when your script is invoked by "np
 NPM's commands are not very friendly with this wonderful feature, so it was difficult to write a package that does it.
 
 Usage:<br/>
-&nbsp;&nbsp;&nbsp;&nbsp;const result = require('package-config').list([package_name], [options]);
+&nbsp;&nbsp;&nbsp;&nbsp;const result = require('npm-package-config').list([package_name], [options]);
 
 Where:<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;"package_name" : (optional) name of the package<br/>
