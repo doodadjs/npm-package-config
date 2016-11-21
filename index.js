@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 "use strict";
 
-const Module = module.constructor,
+const Module = require('module').Module,
 	_require = function(_module, path) {
 		return Module._load(path, _module);
 	};
