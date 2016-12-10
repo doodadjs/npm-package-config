@@ -44,7 +44,7 @@ function reduceEnvironment(result) {
 
 function reducePackageConfig(result, packageConfig, parent, type) {
 	const replaceRegEx = /[^A-Za-z0-9_]/g;
-	if (typeof packageConfig === 'object') {
+	if ((packageConfig !== null) && (typeof packageConfig === 'object')) {
 		Object.keys(packageConfig).forEach(function(key) {
 			if (
 					((type === 'package') && (key !== 'config') && (key !== 'dependencies')) ||
@@ -109,7 +109,7 @@ function beautify(config) {
 		if (!key) {
 			key = '_';
 		};
-		if (typeof r === 'object') {
+		if ((r !== null) && (typeof r === 'object')) {
 			r[key] = value;
 		};
 		return result;
