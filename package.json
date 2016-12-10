@@ -1,6 +1,6 @@
 {
   "name": "npm-package-config",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
   "scripts": {
@@ -20,10 +20,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/doodadjs/package-config.git"
+    "url": "https://github.com/doodadjs/npm-package-config.git"
   },
   "bugs": {
-    "url": "https://github.com/doodadjs/package-config/issues",
+    "url": "https://github.com/doodadjs/npm-package-config/issues",
     "email": "doodadjs@gmail.com"
   },
   "author": "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
