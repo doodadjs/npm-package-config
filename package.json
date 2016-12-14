@@ -1,6 +1,6 @@
 {
   "name": "npm-package-config",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
   "scripts": {
