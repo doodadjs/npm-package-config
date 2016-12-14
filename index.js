@@ -93,6 +93,10 @@ function combine(config) {
 function beautify(config) {
 	return Object.keys(config).reduce(function(result, key) {
 		const value = config[key];
+		if (key.slice(0, 9) === 'package__') {
+			// <PRB> npm uses '_' to illustrate private variables
+			key = 'package_$' + key.slice(9);
+		};
 		key = key.replace(/__/g, '.').split('_');
 		let r = result;
 		for (let i = 0; i < key.length - 1; i++) {
@@ -100,13 +104,22 @@ function beautify(config) {
 			if (!k) {
 				continue;
 			};
+			if (k[0] === '$') {
+				// <PRB> npm uses '_' to illustrate private variables
+				k = '_' + k.slice(1);
+			};
 			if (!Object.prototype.hasOwnProperty.call(r, k)) {
 				r[k] = {};
 			};
 			r = r[k];
 		};
 		key = key[key.length - 1];
-		if (!key) {
+		if (key) {
+			if (key[0] === '$') {
+				// <PRB> npm uses '_' to illustrate private variables
+				key = '_' + key.slice(1);
+			};
+		} else {
 			key = '_';
 		};
 		if ((r !== null) && (typeof r === 'object')) {
