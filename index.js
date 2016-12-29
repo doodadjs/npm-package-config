@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 Claude Petit
+Copyright (c) 2015-2017 Claude Petit
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
