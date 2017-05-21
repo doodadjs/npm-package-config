@@ -175,7 +175,7 @@ module.exports = {
 			cp = require('child_process'),
 			fs = require('fs');
 			
-		const packageFolder = path.dirname(require.resolve(packageName));
+		const packageFolder = path.dirname(_module.filename);
 			
 		if (options.async) {
 			function listNpm() {
