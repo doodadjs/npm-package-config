@@ -145,46 +145,53 @@ module.exports = {
 			env: {}, 
 		};
 		
-		let parent = module.parent,
-			prevParent = null,
+		let mainModule = module.parent,
 			_package = null,
-			_module = null,
 			upDir = '';
+
 		const packageJson = '.' + path.sep + 'package.json';
-		while (parent && (parent.id !== 'repl') && (parent !== prevParent)) {
-			prevParent = parent;
-			const pathsLen = parent.paths.length;
+
+		while (mainModule && (mainModule.id !== 'repl')) {
+			const pathsLen = mainModule.paths.length + 1;
+
 			for (let i = 0; i < pathsLen; i++) {
 				try {
-					_module = parent;
-					_package = _require(_module, upDir + packageJson);
+					_package = _require(mainModule, upDir + packageJson);
 					break;
 				} catch(ex) {
+					if (ex.code !== 'MODULE_NOT_FOUND') {
+						throw ex;
+					};
+
 					upDir += '..' + path.sep;
 				};
 			};
+
 			if (_package) {
 				break;
-			} else {
-				parent = parent.parent;
 			};
+
+			mainModule = mainModule.parent;
 		};
 
 		if (!_package) {
 			throw new Error("No main 'package.json' found.");
 		};
-		
+
 		if (!packageName || (packageName === _package.name)) {
-			packageName = _package.name;
 			reduceEnvironment(config);
+		};
+
+		if (packageName) {
+			_package = _require(mainModule, packageName + path.sep + 'package.json');
 		} else {
-			_package = _require(_module, packageName + '/package.json');
+			packageName = _package.name;
 		};
 
 		reducePackageConfig(config, _package, 'package_', 'package');
 		reducePackageConfig(config, _package.config, '', 'config');
 		
-		const packageFolder = path.dirname(_module.filename) + path.sep + upDir;
+		const packageFolder = path.dirname(mainModule.filename) + path.sep + upDir;
 			
 		if (options.async) {
 			function listNpm() {
