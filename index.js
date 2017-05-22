@@ -174,18 +174,22 @@ module.exports = {
 			mainModule = mainModule.parent;
 		};
 
-		if (!_package) {
-			throw new Error("No main 'package.json' found.");
+		if (!mainModule) {
+			mainModule = require.main || module;
 		};
 
-		if (!packageName || (packageName === _package.name)) {
+		let isMain = false;
+		if (!packageName || (_package && (packageName === _package.name))) {
 			reduceEnvironment(config);
+			isMain = true;
 		};
 
-		if (packageName) {
+		if (packageName && !isMain) {
 			_package = _require(mainModule, packageName + path.sep + 'package.json');
-		} else {
+		} else if (_package) {
 			packageName = _package.name;
+		} else {
+			throw new Error("No main 'package.json' found.");
 		};
 
 		reducePackageConfig(config, _package, 'package_', 'package');
