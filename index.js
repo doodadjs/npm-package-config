@@ -25,6 +25,10 @@ THE SOFTWARE.
 
 "use strict";
 
+const path = require('path'),
+	cp = require('child_process'),
+	fs = require('fs');
+
 const Module = require('module').Module,
 	_require = function(_module, path) {
 		return Module._load(path, _module);
@@ -141,41 +145,57 @@ module.exports = {
 			env: {}, 
 		};
 		
-
-		let parent = module.parent,
-			prevParent = null,
+		let mainModule = module.parent,
 			_package = null,
-			_module = null;
-		while (parent && (parent.id !== 'repl') && (parent !== prevParent)) {
-			prevParent = parent;
-			try {
-				_package = _require(parent, './package.json');
-				_module = parent;
-				break;
-			} catch(ex) {
-				parent = parent.parent;
+			upDir = '';
+
+		const packageJson = '.' + path.sep + 'package.json';
+
+		while (mainModule && (mainModule.id !== 'repl')) {
+			const pathsLen = mainModule.paths.length + 1;
+
+			for (let i = 0; i < pathsLen; i++) {
+				try {
+					_package = _require(mainModule, upDir + packageJson);
+					break;
+				} catch(ex) {
+					if (ex.code !== 'MODULE_NOT_FOUND') {
+						throw ex;
+					};
+
+					upDir += '..' + path.sep;
+				};
 			};
+
+			if (_package) {
+				break;
+			};
+
+			mainModule = mainModule.parent;
 		};
-		if (!_package) {
-			_module = module;
-			_package = _require(_module, './package.json');
+
+		if (!mainModule) {
+			mainModule = require.main || module;
 		};
-		
-		if (!packageName || (packageName === _package.name)) {
-			packageName = _package.name;
+
+		let isMain = false;
+		if (!packageName || (_package && (packageName === _package.name))) {
 			reduceEnvironment(config);
+			isMain = true;
+		};
+
+		if (packageName && !isMain) {
+			_package = _require(mainModule, packageName + path.sep + 'package.json');
+		} else if (_package) {
+			packageName = _package.name;
 		} else {
-			_package = _require(_module, packageName + '/package.json');
+			throw new Error("No main 'package.json' found.");
 		};
 
 		reducePackageConfig(config, _package, 'package_', 'package');
-		reducePackageConfig(config, _package.config, '_', 'config');
+		reducePackageConfig(config, _package.config, '', 'config');
 		
-		const path = require('path'),
-			cp = require('child_process'),
-			fs = require('fs');
-			
-		const packageFolder = path.dirname(_module.filename);
+		const packageFolder = path.dirname(mainModule.filename) + path.sep + upDir;
 			
 		if (options.async) {
 			function listNpm() {
@@ -191,7 +211,7 @@ module.exports = {
 			};
 			function listProject() {
 				return new Promise(function(resolve, reject) {
-					fs.readFile(packageFolder + '/.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+					fs.readFile(packageFolder + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
 						if (err) {
 							if (err.code !== 'ENOENT') {
 								reject(err);
@@ -219,7 +239,7 @@ module.exports = {
 			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf-8', cwd: packageFolder});
 			parse(packageName, config, cp.execSync('npm config list', {encoding: 'utf-8', cwd: packageFolder}));
 			try {
-				parse(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf-8'}), 'project');
+				parse(packageName, config, fs.readFileSync(packageFolder + '.npmrc', {encoding: 'utf-8'}), 'project');
 			} catch(ex) {
 				if (ex.code !== 'ENOENT') {
 					throw ex;
