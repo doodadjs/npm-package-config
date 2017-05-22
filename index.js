@@ -25,6 +25,10 @@ THE SOFTWARE.
 
 "use strict";
 
+const path = require('path'),
+	cp = require('child_process'),
+	fs = require('fs');
+
 const Module = require('module').Module,
 	_require = function(_module, path) {
 		return Module._load(path, _module);
@@ -141,24 +145,33 @@ module.exports = {
 			env: {}, 
 		};
 		
-
 		let parent = module.parent,
 			prevParent = null,
 			_package = null,
-			_module = null;
+			_module = null,
+			upDir = '';
+		const packageJson = '.' + path.sep + 'package.json';
 		while (parent && (parent.id !== 'repl') && (parent !== prevParent)) {
 			prevParent = parent;
-			try {
-				_package = _require(parent, './package.json');
-				_module = parent;
+			const pathsLen = parent.paths.length;
+			for (let i = 0; i < pathsLen; i++) {
+				try {
+					_module = parent;
+					_package = _require(_module, upDir + packageJson);
+					break;
+				} catch(ex) {
+					upDir += '..' + path.sep;
+				};
+			};
+			if (_package) {
 				break;
-			} catch(ex) {
+			} else {
 				parent = parent.parent;
 			};
 		};
+
 		if (!_package) {
-			_module = module;
-			_package = _require(_module, './package.json');
+			throw new Error("No main 'package.json' found.");
 		};
 		
 		if (!packageName || (packageName === _package.name)) {
@@ -169,13 +182,9 @@ module.exports = {
 		};
 
 		reducePackageConfig(config, _package, 'package_', 'package');
-		reducePackageConfig(config, _package.config, '_', 'config');
+		reducePackageConfig(config, _package.config, '', 'config');
 		
-		const path = require('path'),
-			cp = require('child_process'),
-			fs = require('fs');
-			
-		const packageFolder = path.dirname(_module.filename);
+		const packageFolder = path.dirname(_module.filename) + path.sep + upDir;
 			
 		if (options.async) {
 			function listNpm() {
@@ -191,7 +200,7 @@ module.exports = {
 			};
 			function listProject() {
 				return new Promise(function(resolve, reject) {
-					fs.readFile(packageFolder + '/.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+					fs.readFile(packageFolder + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
 						if (err) {
 							if (err.code !== 'ENOENT') {
 								reject(err);
@@ -219,7 +228,7 @@ module.exports = {
 			//"Error: invalid data"   cp.execFileSync('npm', ['config', 'list'], {encoding: 'utf-8', cwd: packageFolder});
 			parse(packageName, config, cp.execSync('npm config list', {encoding: 'utf-8', cwd: packageFolder}));
 			try {
-				parse(packageName, config, fs.readFileSync(packageFolder + '/.npmrc', {encoding: 'utf-8'}), 'project');
+				parse(packageName, config, fs.readFileSync(packageFolder + '.npmrc', {encoding: 'utf-8'}), 'project');
 			} catch(ex) {
 				if (ex.code !== 'ENOENT') {
 					throw ex;
