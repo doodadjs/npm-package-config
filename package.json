@@ -1,22 +1,23 @@
 {
   "name": "npm-package-config",
-  "version": "0.1.10",
+  "version": "0.3.0",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "travis_test": "node ./test/test_app/main.js"
   },
   "keywords": [
     "npm",
     "config"
   ],
   "files": [
-	"browserify",
-	"index.js",
-	"README.md",
-	"LICENSE",
-	"browserify.js",
-	"tonic.js"
+    "test",
+    "index.js",
+    "README.md",
+    "LICENSE",
+    "browserify.js",
+    "tonic.js",
+    ".travis.yml"
   ],
   "repository": {
     "type": "git",
