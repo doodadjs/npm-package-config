@@ -1,0 +1,14 @@
+{
+  "name": "test_app",
+  "version": "0.1.0",
+  "description": "Test application",
+  "author": "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
+  "license": "MIT",
+  "config": {
+    "apple": "red",
+    "tomato": "green"
+  },
+  "dependencies": {
+    "tap": "^10.3.2"
+  }
+}
