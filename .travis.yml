@@ -1,6 +1,6 @@
-﻿language: node_js
+language: node_js
 node_js:
-	- "7"
-	- "6"
+  - "7"
+  - "6"
 before_script: cd ./test/test_app && npm install
 script: npm run travis_test
