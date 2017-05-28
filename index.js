@@ -186,7 +186,7 @@ module.exports = {
 					_package = JSON.parse(fs.readFileSync(mainPath + path.sep + upDir + packageJson));
 					break;
 				} catch(ex) {
-					if (ex.code !== 'MODULE_NOT_FOUND') {
+					if (ex.code !== 'ENOENT') {
 						throw ex;
 					};
 

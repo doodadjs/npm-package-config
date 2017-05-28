@@ -1,10 +1,11 @@
 {
   "name": "npm-package-config",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
   "scripts": {
-    "travis_test": "node ./test/test_app/main.js"
+    "travis_app_test": "node ./test/test_app/main.js",
+    "travis_cli_test": "node ./test/test_app/lib/cli.js"
   },
   "keywords": [
     "npm",

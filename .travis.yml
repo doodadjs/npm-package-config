@@ -8,4 +8,6 @@ before_script:
   - mv node_modules.rename_me node_modules
   - npm install
   - popd
-script: npm run travis_test
+script:
+  - npm run travis_app_test
+  - npm run travis_cli_test
