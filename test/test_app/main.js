@@ -7,7 +7,7 @@ const test = require('tap').test
 
 const npm_package_config = require('../../index.js');
 
-const packageA = require('packageA');
+const packageA = require('package_a');
 
 function cleanup() {
 	cp.execSync("npm config delete test_app:apple");
