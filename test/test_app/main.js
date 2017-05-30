@@ -14,8 +14,8 @@ function cleanup() {
 	cp.execSync("npm config delete test_app:tomato");
 	cp.execSync("npm config delete test_app:banana");
 
-	cp.execSync("npm config delete packageA:keyA");
-	cp.execSync("npm config delete packageA:keyB");
+	cp.execSync("npm config delete package_a:keyA");
+	cp.execSync("npm config delete package_a:keyB");
 };
 
 function setup() {
@@ -113,7 +113,7 @@ test('packageA-Sync', function(t) {
 	let expected, actual;
 
 	expected = {
-        package_name: 'packageA',
+        package_name: 'package_a',
         package_version: '0.1.0',
         package_description: "Test package",
         package_author: "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
@@ -121,12 +121,12 @@ test('packageA-Sync', function(t) {
 		keyA: '1',
 		keyB: 2,
 	};
-	actual = npm_package_config.list('packageA');
+	actual = npm_package_config.list('package_a');
 	t.strictSame(actual, expected, "Without override.")
 
-	cp.execSync("npm config set packageA:keyA Hello");
+	cp.execSync("npm config set package_a:keyA Hello");
 	expected = {
-        package_name: 'packageA',
+        package_name: 'package_a',
         package_version: '0.1.0',
         package_description: "Test package",
         package_author: "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
@@ -134,7 +134,7 @@ test('packageA-Sync', function(t) {
 		keyA: 'Hello',
 		keyB: 2,
 	};
-	actual = npm_package_config.list('packageA');
+	actual = npm_package_config.list('package_a');
 	t.strictSame(actual, expected, "'keyA' overriden by 'Hello'.")
 
 	t.done();
@@ -147,10 +147,10 @@ test('packageA-Cleanup', function(t) {
 });
 
 test('packageA-Async', function(t) {
-	npm_package_config.list('packageA', {async: true})
+	npm_package_config.list('package_a', {async: true})
 		.then(function(actual) {
 			const expected = {
-				package_name: 'packageA',
+				package_name: 'package_a',
 				package_version: '0.1.0',
 				package_description: "Test package",
 				package_author: "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
@@ -160,13 +160,13 @@ test('packageA-Async', function(t) {
 			};
 			t.strictSame(actual, expected, "Without override.")
 
-			cp.execSync("npm config set packageA:keyA Hello");
+			cp.execSync("npm config set package_a:keyA Hello");
 
-			return npm_package_config.list('packageA', {async: true});
+			return npm_package_config.list('package_a', {async: true});
 		})
 		.then(function(actual) {
 			const expected = {
-				package_name: 'packageA',
+				package_name: 'package_a',
 				package_version: '0.1.0',
 				package_description: "Test package",
 				package_author: "Claude Petit <doodadjs@gmail.com> (https://github.com/doodadjs/)",
