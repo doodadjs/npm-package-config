@@ -257,7 +257,7 @@ module.exports = {
 						});
 					});
 				} else {
-					resolve(args);
+					return Promise.resolve(args);
 				};
 			};
 			
