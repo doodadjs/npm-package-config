@@ -50,11 +50,12 @@ function splitNpmCommandResults(result) {
 
 function reduceEnvironment(config) {
 	const NPM_KEY = (process.env.npm_package_name ? 'npm_package_config_' : 'npm_config_'),
+		NPM_KEY_LEN = NPM_KEY.length,
 		envKeys = Object.keys(process.env);
 
 	envKeys.forEach(function(key) {
 		if (key.toLowerCase().startsWith(NPM_KEY)) {
-			config.env[key.slice(NPM_KEY.length)] = process.env[key];
+			config.env[key.slice(NPM_KEY_LEN)] = process.env[key];
 		};
 	});
 };
@@ -78,33 +79,53 @@ function reducePackageConfig(result, packageConfig, parent, type) {
 	};
 };
 
-
-const GLOBAL_SECTION_NAME = "; globalconfig ";
-const USER_SECTION_NAME = "; userconfig ";
+const CLI_SECTION_NAME = "; cli configs";
 const PROJECT_SECTION_NAME = "; project config "; // npm v5
+const USER_SECTION_NAME = "; userconfig ";
+const GLOBAL_SECTION_NAME = "; globalconfig ";
+const BUILT_IN_SECTION_NAME = "; builtin config ";
 
-function parse(npmVersion, packageName, config, fileContent, /*optional*/section) {
-	const varPrefix = (packageName ? packageName + ':' : '');
+function parse(npmVersion, projectName, packageName, config, fileContent, /*optional*/section) {
 	let currentSection = section;
-	fileContent.split('\n').filter(function(line) {
-			return line.trim('\r').startsWith(GLOBAL_SECTION_NAME) || line.startsWith(USER_SECTION_NAME) || ((npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) || !varPrefix || line.startsWith(varPrefix);
-		}).forEach(function(line) {
-			if (!section && line.startsWith(GLOBAL_SECTION_NAME)) {
-				currentSection = 'global';
+	const lines = fileContent.split(/\n\r|\r\n|\n|\r/);
+	lines.forEach(function(line) {
+			line = line.trim();
+			if (!section && line.startsWith(CLI_SECTION_NAME)) {
+				currentSection = 'cli';
+			} else if (!section && (npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) { // npm v5
+				currentSection = 'project';
 			} else if (!section && line.startsWith(USER_SECTION_NAME)) {
 				currentSection = 'user';
-			} else if (!section && (npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) {
-				currentSection = 'project';
-			} else if (currentSection) {
-				if (varPrefix) {
-					line = line.slice(varPrefix.length);
-				};
-				const pos = line.indexOf('=');
-				const key = line.slice(0, pos).trim();
+			} else if (!section && line.startsWith(GLOBAL_SECTION_NAME)) {
+				currentSection = 'global';
+			} else if (!section && line.startsWith(BUILT_IN_SECTION_NAME)) {
+				currentSection = 'builtin';
+			} else if (!line || line.startsWith(';')) {
+				// Skip comments
+			} else if (currentSection && (currentSection !== 'cli') && (currentSection !== 'builtin')) {
+				const posKey = line.indexOf('=');
+				let key = line.slice(0, posKey).trim();
 				if (key) {
-					let val = line.slice(pos + 1).trim();
-					if (val.startsWith('"')) {
+					if (key.startsWith("'")) {
+						key = key.slice(1, -1);
+					};
+					const posPrefix = key.lastIndexOf(':');
+					const prefix = ((posPrefix >= 0) ? key.slice(0, posPrefix) : '');
+					key = ((posPrefix >= 0) ? key.slice(posPrefix + 1) : key);
+					if (!prefix && (currentSection !== 'project')) {
+						// Not the package's key/value pair
+						return;
+					};
+					if (projectName && (prefix === projectName)) {
+						// That's a key/value pair of the current application
+					} else if (prefix !== packageName) { // NOTE: Values can be empty strings
+						// Not the package's key/value pair
+						return;
+					};
+					let val = line.slice(posKey + 1).trim();
+					try {
 						val = JSON.parse(val);
+					} catch(ex) {
 					};
 					config[currentSection][key] = val;
 				};
@@ -161,6 +182,7 @@ function beautify(config) {
 
 module.exports = {
 	list: function list(/*optional*/packageName, /*optional*/options) {
+		packageName = packageName || '';
 		options = options || {};
 		
 		const config = {
@@ -205,16 +227,18 @@ module.exports = {
 			mainModule = require.main || module;
 		};
 
-		let isMain = false;
-		if (!packageName || (_package && (packageName === _package.name))) {
+		if (!packageName || (_package && (_package.name === packageName))) {
+			packageName = '';
 			reduceEnvironment(config);
-			isMain = true;
 		};
 
-		if (packageName && !isMain) {
+		let projectName = '';
+		if (packageName) {
 			_package = _require(mainModule, packageName + path.sep + PACKAGE_JSON_FILE);
 		} else if (!_package) {
 			throw new Error("No '" + PACKAGE_JSON_FILE + "' found.");
+		} else {
+			projectName = _package.name;
 		};
 
 		reducePackageConfig(config, _package, 'package_', 'package');
@@ -232,7 +256,7 @@ module.exports = {
 							const retval = splitNpmCommandResults(stdout);
 							const npmVersion = retval[0];
 							const configList = retval[1];
-							parse(npmVersion, packageName || _package.name, config, configList);
+							parse(npmVersion, projectName, packageName, config, configList);
 							resolve([npmVersion, config]);
 						};
 					});
@@ -251,7 +275,7 @@ module.exports = {
 									reject(err);
 								};
 							} else {
-								parse(npmVersion, packageName, config, fileContent, 'project');
+								parse(npmVersion, projectName, packageName, config, fileContent, 'project');
 								resolve([npmVersion, config]);
 							};
 						});
@@ -279,10 +303,10 @@ module.exports = {
 			let retval = splitNpmCommandResults(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: packageFolder}));
 			const npmVersion = retval[0];
 			const configList = retval[1];
-			parse(npmVersion, packageName || _package.name, config, configList);
+			parse(npmVersion, projectName, packageName, config, configList);
 			if (npmVersion < 5) {
 				try {
-					parse(npmVersion, packageName, config, fs.readFileSync(packageFolder + '.npmrc', {encoding: 'utf-8'}), 'project');
+					parse(npmVersion, projectName, packageName, config, fs.readFileSync(packageFolder + '.npmrc', {encoding: 'utf-8'}), 'project');
 				} catch(ex) {
 					if (ex.code !== 'ENOENT') {
 						throw ex;
