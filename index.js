@@ -40,11 +40,49 @@ const PACKAGE_JSON_FILE = 'package.json';
 const NPM_COMMAND = 'npm -v && npm config list';
 
 
-function splitNpmCommandResults(result) {
-	const pos = result.indexOf('\n');
-	const npmVersion = parseInt(result.slice(0, pos).trim('\r').split('.')[0]);
-	const configList = result.slice(pos + 1).trim('\r');
-	return [npmVersion, configList];
+let MAIN_MODULE = null,
+	MAIN_PATH = null,
+	MAIN_PACKAGE = null;
+
+function init() {
+	if (!MAIN_MODULE) {
+		MAIN_MODULE = module.parent;
+		MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
+
+		const packageJson = '.' + path.sep + PACKAGE_JSON_FILE;
+
+		while (MAIN_MODULE && (MAIN_MODULE.id !== 'repl')) {
+			const pathsLen = MAIN_MODULE.paths.length + 1;
+
+			for (let i = 0; i < pathsLen; i++) {
+				try {
+					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + packageJson));
+					break;
+				} catch(ex) {
+					if (ex.code !== 'ENOENT') {
+						throw ex;
+					};
+
+					MAIN_PATH += '..' + path.sep;
+				};
+			};
+
+			if (MAIN_PACKAGE) {
+				break;
+			};
+
+			MAIN_MODULE = MAIN_MODULE.parent;
+		};
+
+		if (!MAIN_MODULE) {
+			MAIN_MODULE = require.main || module;
+		};
+	};
+};
+
+
+function getLines(fileContent) {
+	return fileContent.split(/\n\r|\r\n|\n|\r/);
 };
 
 
@@ -85,9 +123,8 @@ const USER_SECTION_NAME = "; userconfig ";
 const GLOBAL_SECTION_NAME = "; globalconfig ";
 const BUILT_IN_SECTION_NAME = "; builtin config ";
 
-function parse(npmVersion, projectName, packageName, config, fileContent, /*optional*/section) {
+function parse(npmVersion, projectName, packageName, config, lines, /*optional*/section) {
 	let currentSection = section;
-	const lines = fileContent.split(/\n\r|\r\n|\n|\r/);
 	lines.forEach(function(line) {
 			line = line.trim();
 			if (!section && line.startsWith(CLI_SECTION_NAME)) {
@@ -182,9 +219,13 @@ function beautify(config) {
 
 module.exports = {
 	list: function list(/*optional*/packageName, /*optional*/options) {
+		init();
+
+
 		packageName = packageName || '';
 		options = options || {};
-		
+
+
 		const config = {
 			package: {}, 
 			global: {}, 
@@ -192,71 +233,39 @@ module.exports = {
 			project: {}, 
 			env: {}, 
 		};
+
 		
-		let mainModule = module.parent,
-			_package = null,
-			upDir = '';
-
-		const packageJson = '.' + path.sep + PACKAGE_JSON_FILE;
-		const mainPath = path.dirname(mainModule.filename);
-
-		while (mainModule && (mainModule.id !== 'repl')) {
-			const pathsLen = mainModule.paths.length + 1;
-
-			for (let i = 0; i < pathsLen; i++) {
-				try {
-					_package = JSON.parse(fs.readFileSync(mainPath + path.sep + upDir + packageJson));
-					break;
-				} catch(ex) {
-					if (ex.code !== 'ENOENT') {
-						throw ex;
-					};
-
-					upDir += '..' + path.sep;
-				};
-			};
-
-			if (_package) {
-				break;
-			};
-
-			mainModule = mainModule.parent;
-		};
-
-		if (!mainModule) {
-			mainModule = require.main || module;
-		};
-
-		if (!packageName || (_package && (_package.name === packageName))) {
+		if (!packageName || (MAIN_PACKAGE && (MAIN_PACKAGE.name === packageName))) {
 			packageName = '';
 			reduceEnvironment(config);
 		};
 
-		let projectName = '';
+
+		let _package = MAIN_PACKAGE;
 		if (packageName) {
-			_package = _require(mainModule, packageName + path.sep + PACKAGE_JSON_FILE);
+			_package = _require(MAIN_MODULE, packageName + path.sep + PACKAGE_JSON_FILE);
 		} else if (!_package) {
 			throw new Error("No '" + PACKAGE_JSON_FILE + "' found.");
-		} else {
-			projectName = _package.name;
 		};
+
+
+		const projectName = (packageName ? '' : MAIN_PACKAGE.name);
+
 
 		reducePackageConfig(config, _package, 'package_', 'package');
 		reducePackageConfig(config, _package.config, '', 'config');
 		
-		const packageFolder = mainPath + path.sep + upDir;
-		
+
 		if (options.async) {
 			function listNpm(config) {
 				return new Promise(function(resolve, reject) {
-					cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: packageFolder}, function(err, stdout) {
+					cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}, function(err, stdout) {
 						if (err) {
 							reject(err);
 						} else {
-							const retval = splitNpmCommandResults(stdout);
-							const npmVersion = retval[0];
-							const configList = retval[1];
-							parse(npmVersion, projectName, packageName, config, configList);
+							const lines = getLines(stdout);
+							const npmVersion = parseInt(lines[0].split('.')[0]);
+							parse(npmVersion, projectName, packageName, config, lines.slice(1));
 							resolve([npmVersion, config]);
 						};
 					});
@@ -267,7 +276,7 @@ module.exports = {
 				const config = args[1];
 				if (npmVersion < 5) {
 					return new Promise(function(resolve, reject) {
-						fs.readFile(packageFolder + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+						fs.readFile(MAIN_PATH + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
 							if (err) {
 								if (err.code === 'ENOENT') {
 									resolve(args);
@@ -275,7 +284,7 @@ module.exports = {
 									reject(err);
 								};
 							} else {
-								parse(npmVersion, projectName, packageName, config, fileContent, 'project');
+								parse(npmVersion, projectName, packageName, config, getLines(fileContent), 'project');
 								resolve([npmVersion, config]);
 							};
 						});
@@ -300,13 +309,12 @@ module.exports = {
 					};
 				});
 		} else {
-			let retval = splitNpmCommandResults(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: packageFolder}));
-			const npmVersion = retval[0];
-			const configList = retval[1];
-			parse(npmVersion, projectName, packageName, config, configList);
+			const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}));
+			const npmVersion = parseInt(lines[0].split('.')[0]);
+			parse(npmVersion, projectName, packageName, config, lines.slice(1));
 			if (npmVersion < 5) {
 				try {
-					parse(npmVersion, projectName, packageName, config, fs.readFileSync(packageFolder + '.npmrc', {encoding: 'utf-8'}), 'project');
+					parse(npmVersion, projectName, packageName, config, getLines(fs.readFileSync(MAIN_PATH + '.npmrc', {encoding: 'utf-8'})), 'project');
 				} catch(ex) {
 					if (ex.code !== 'ENOENT') {
 						throw ex;
