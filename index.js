@@ -25,9 +25,24 @@ THE SOFTWARE.
 
 "use strict";
 
+
 const path = require('path'),
 	cp = require('child_process'),
 	fs = require('fs');
+
+
+const natives = {
+	hasKey: Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty),
+};
+
+
+function get(obj, key, /*optional*/defaultValue) {
+	if ((obj != null) && natives.hasKey(obj, key)) {
+		return obj[key];
+	} else {
+		return defaultValue;
+	};
+};
 
 
 const Module = require('module').Module,
@@ -39,31 +54,49 @@ const Module = require('module').Module,
 const PACKAGE_JSON_FILE = 'package.json';
 const NPM_COMMAND = 'npm -v && npm config list';
 
+const CLI_SECTION_NAME = "; cli configs";
+const PROJECT_SECTION_NAME = "; project config "; // npm v5
+const USER_SECTION_NAME = "; userconfig ";
+const GLOBAL_SECTION_NAME = "; globalconfig ";
+const BUILT_IN_SECTION_NAME = "; builtin config ";
+
 
 let MAIN_MODULE = null,
 	MAIN_PATH = null,
 	MAIN_PACKAGE = null;
 
+
 function init() {
 	if (!MAIN_MODULE) {
 		MAIN_MODULE = module.parent;
-		MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
 
 		const packageJson = '.' + path.sep + PACKAGE_JSON_FILE;
 
-		while (MAIN_MODULE && (MAIN_MODULE.id !== 'repl')) {
-			const pathsLen = MAIN_MODULE.paths.length + 1;
+		while (MAIN_MODULE) {
+			MAIN_PATH = (MAIN_MODULE.filename ? path.dirname(MAIN_MODULE.filename) : process.cwd()) + path.sep;
 
-			for (let i = 0; i < pathsLen; i++) {
+			const pathsLen = MAIN_MODULE.paths.length;
+
+			if (pathsLen > 0) {
+				for (let i = 0; i < pathsLen; i++) {
+					try {
+						MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + packageJson));
+						break;
+					} catch(ex) {
+						if (ex.code !== 'ENOENT') {
+							throw ex;
+						};
+
+						MAIN_PATH += '..' + path.sep;
+					};
+				};
+			} else {
 				try {
 					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + packageJson));
-					break;
 				} catch(ex) {
 					if (ex.code !== 'ENOENT') {
 						throw ex;
 					};
-
-					MAIN_PATH += '..' + path.sep;
 				};
 			};
 
@@ -86,14 +119,17 @@ function getLines(fileContent) {
 };
 
 
-function reduceEnvironment(config) {
+function reduceEnvironment(state) {
 	const NPM_KEY = (process.env.npm_package_name ? 'npm_package_config_' : 'npm_config_'),
 		NPM_KEY_LEN = NPM_KEY.length,
 		envKeys = Object.keys(process.env);
 
 	envKeys.forEach(function(key) {
 		if (key.toLowerCase().startsWith(NPM_KEY)) {
-			config.env[key.slice(NPM_KEY_LEN)] = process.env[key];
+			const id = key.slice(NPM_KEY_LEN);
+			if (id) {
+				state.config.env[id] = process.env[key];
+			};
 		};
 	});
 };
@@ -109,27 +145,27 @@ function reducePackageConfig(result, packageConfig, parent, type) {
 				) {
 				const val = packageConfig[key];
 				key = key.replace(replaceRegEx, '_');
-				reducePackageConfig(result, val, parent + key + '_', type);
+				if (key) {
+					reducePackageConfig(result, val, parent + key + '_', type);
+				};
 			};
 		});
 	} else {
-		result.package[parent.slice(0, -1)] = packageConfig;
+		let key = parent.slice(0, -1);
+		if (key) {
+			result.package[key] = packageConfig;
+		};
 	};
 };
 
-const CLI_SECTION_NAME = "; cli configs";
-const PROJECT_SECTION_NAME = "; project config "; // npm v5
-const USER_SECTION_NAME = "; userconfig ";
-const GLOBAL_SECTION_NAME = "; globalconfig ";
-const BUILT_IN_SECTION_NAME = "; builtin config ";
 
-function parse(npmVersion, projectName, packageName, config, lines, /*optional*/section) {
+function parse(state, lines, /*optional*/section) {
 	let currentSection = section;
 	lines.forEach(function(line) {
 			line = line.trim();
 			if (!section && line.startsWith(CLI_SECTION_NAME)) {
 				currentSection = 'cli';
-			} else if (!section && (npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) { // npm v5
+			} else if (!section && (state.npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) { // npm v5
 				currentSection = 'project';
 			} else if (!section && line.startsWith(USER_SECTION_NAME)) {
 				currentSection = 'user';
@@ -142,20 +178,20 @@ function parse(npmVersion, projectName, packageName, config, lines, /*optional*/
 			} else if (currentSection && (currentSection !== 'cli') && (currentSection !== 'builtin')) {
 				const posKey = line.indexOf('=');
 				let key = line.slice(0, posKey).trim();
+				if (key.startsWith("'")) {
+					key = key.slice(1, -1);
+				};
+				const posPrefix = key.lastIndexOf(':');
+				const prefix = ((posPrefix >= 0) ? key.slice(0, posPrefix) : '');
+				key = ((posPrefix >= 0) ? key.slice(posPrefix + 1) : key);
 				if (key) {
-					if (key.startsWith("'")) {
-						key = key.slice(1, -1);
-					};
-					const posPrefix = key.lastIndexOf(':');
-					const prefix = ((posPrefix >= 0) ? key.slice(0, posPrefix) : '');
-					key = ((posPrefix >= 0) ? key.slice(posPrefix + 1) : key);
 					if (!prefix && (currentSection !== 'project')) {
 						// Not the package's key/value pair
 						return;
 					};
-					if (projectName && (prefix === projectName)) {
+					if (state.projectName && (prefix === state.projectName)) {
 						// That's a key/value pair of the current application
-					} else if (prefix !== packageName) { // NOTE: Values can be empty strings
+					} else if (prefix !== state.packageName) { // NOTE: Values can be empty strings
 						// Not the package's key/value pair
 						return;
 					};
@@ -164,15 +200,15 @@ function parse(npmVersion, projectName, packageName, config, lines, /*optional*/
 						val = JSON.parse(val);
 					} catch(ex) {
 					};
-					config[currentSection][key] = val;
+					state.config[currentSection][key] = val;
 				};
 			};
 		});
 };
 
 
-function combine(npmVersion, config) {
-	return Object.assign({}, config.package, config.global, config.user, config.project, config.env);
+function combine(state) {
+	return Object.assign({}, state.config.package, state.config.global, state.config.user, state.config.project, state.config.env);
 };
 
 
@@ -208,7 +244,7 @@ function beautify(config) {
 		} else {
 			key = '_';
 		};
-		if ((r !== null) && (typeof r === 'object')) {
+		if ((r !== null) && (typeof r === 'object') && key) {
 			r[key] = value;
 		};
 		return result;
@@ -216,117 +252,135 @@ function beautify(config) {
 };
 
 
-
-module.exports = {
-	list: function list(/*optional*/packageName, /*optional*/options) {
-		init();
+function prepare(packageName, options) {
+	init();
 
 
-		packageName = packageName || '';
-		options = options || {};
-
-
-		const config = {
+	const state = {
+		config: {
 			package: {}, 
 			global: {}, 
 			user: {}, 
 			project: {}, 
 			env: {}, 
-		};
+		},
+		package: MAIN_PACKAGE,
+		packageName: packageName || '',
+		projectName: MAIN_PACKAGE.name,
+	};
 
 		
-		if (!packageName || (MAIN_PACKAGE && (MAIN_PACKAGE.name === packageName))) {
-			packageName = '';
-			reduceEnvironment(config);
-		};
+	if (!state.packageName || (MAIN_PACKAGE && (MAIN_PACKAGE.name === state.packageName))) {
+		state.packageName = '';
+		reduceEnvironment(state);
+	};
 
 
-		let _package = MAIN_PACKAGE;
-		if (packageName) {
-			_package = _require(MAIN_MODULE, packageName + path.sep + PACKAGE_JSON_FILE);
-		} else if (!_package) {
-			throw new Error("No '" + PACKAGE_JSON_FILE + "' found.");
-		};
+	if (state.packageName) {
+		state.package = _require(MAIN_MODULE, state.packageName + path.sep + PACKAGE_JSON_FILE);
+		state.projectName = '';
+	} else if (!state.package) {
+		throw new Error("No '" + PACKAGE_JSON_FILE + "' found.");
+	};
 
 
-		const projectName = (packageName ? '' : MAIN_PACKAGE.name);
+	reducePackageConfig(state.config, state.package, 'package_', 'package');
+	reducePackageConfig(state.config, state.package.config, '', 'config');
 
 
-		reducePackageConfig(config, _package, 'package_', 'package');
-		reducePackageConfig(config, _package.config, '', 'config');
-		
+	return state;
+};
 
-		if (options.async) {
-			function listNpm(config) {
-				return new Promise(function(resolve, reject) {
-					cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}, function(err, stdout) {
-						if (err) {
-							reject(err);
-						} else {
-							const lines = getLines(stdout);
-							const npmVersion = parseInt(lines[0].split('.')[0]);
-							parse(npmVersion, projectName, packageName, config, lines.slice(1));
-							resolve([npmVersion, config]);
-						};
-					});
-				});
+
+const npm_package_config = module.exports = {
+	listSync: function listSync(/*optional*/packageName, /*optional*/options) {
+		const state = prepare(packageName, options);
+		const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}));
+		state.npmVersion = parseInt(lines[0].split('.')[0]);
+		parse(state, lines.slice(1));
+		if (state.npmVersion < 5) {
+			try {
+				parse(state, getLines(fs.readFileSync(MAIN_PATH + '.npmrc', {encoding: 'utf-8'})), 'project');
+			} catch(ex) {
+				if (ex.code !== 'ENOENT') {
+					throw ex;
+				};
 			};
-			function listProject(args) {
-				const npmVersion = args[0];
-				const config = args[1];
-				if (npmVersion < 5) {
+		};
+		let result = combine(state);
+		if (get(options, 'beautify', false)) {
+			result = beautify(result);
+		};
+		return result;
+	},
+
+	listAsync: function listAsync(/*optional*/packageName, /*optional*/options) {
+		const Promise = get(options, 'Promise', global.Promise);
+
+		return new Promise(function(resovle, reject) {
+			try {
+				const state = prepare(packageName, options);
+
+				function listNpm() {
 					return new Promise(function(resolve, reject) {
-						fs.readFile(MAIN_PATH + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+						cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}, function(err, stdout) {
 							if (err) {
-								if (err.code === 'ENOENT') {
-									resolve(args);
-								} else {
-									reject(err);
-								};
+								reject(err);
 							} else {
-								parse(npmVersion, projectName, packageName, config, getLines(fileContent), 'project');
-								resolve([npmVersion, config]);
+								const lines = getLines(stdout);
+								state.npmVersion = parseInt(lines[0].split('.')[0]);
+								parse(state, lines.slice(1));
+								resolve();
 							};
 						});
 					});
-				} else {
-					return Promise.resolve(args);
 				};
-			};
+
+				function listProject() {
+					if (state.npmVersion < 5) {
+						return new Promise(function(resolve, reject) {
+							fs.readFile(MAIN_PATH + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+								if (err) {
+									if (err.code === 'ENOENT') {
+										resolve();
+									} else {
+										reject(err);
+									};
+								} else {
+									parse(state, getLines(fileContent), 'project');
+									resolve();
+								};
+							});
+						});
+					};
+				};
 			
-			return listNpm(config)
-				.then(listProject)
-				.then(function(args) {
-					const npmVersion = args[0];
-					const config = args[1];
-					return combine(npmVersion, config);
-				})
-				.then(function(result) {
-					if (options.beautify) {
-						return beautify(result);
-					} else {
-						return result;
-					};
-				});
+				resovle(
+					listNpm()
+						.then(listProject)
+						.then(function() {
+							return combine(state);
+						})
+						.then(function(result) {
+							if (get(options, 'beautify', false)) {
+								result = beautify(result);
+							};
+							return result;
+						})
+				);
+				
+
+			} catch(ex) {
+				reject(ex);
+			};
+		});
+	},
+
+	list: function list(/*optional*/packageName, /*optional*/options) {
+		if (get(options, 'async', false)) {
+			return npm_package_config.listAsync(packageName, options);
 		} else {
-			const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}));
-			const npmVersion = parseInt(lines[0].split('.')[0]);
-			parse(npmVersion, projectName, packageName, config, lines.slice(1));
-			if (npmVersion < 5) {
-				try {
-					parse(npmVersion, projectName, packageName, config, getLines(fs.readFileSync(MAIN_PATH + '.npmrc', {encoding: 'utf-8'})), 'project');
-				} catch(ex) {
-					if (ex.code !== 'ENOENT') {
-						throw ex;
-					};
-				};
-			};
-			let result = combine(npmVersion, config);
-			if (options.beautify) {
-				result = beautify(result);
-			};
-			return result;
+			return npm_package_config.listSync(packageName, options);
 		};
-		
 	},
 };
