@@ -70,29 +70,15 @@ function init() {
 	if (!MAIN_MODULE) {
 		MAIN_MODULE = module.parent;
 
-		const packageJson = '.' + path.sep + PACKAGE_JSON_FILE;
+		whileParent: while (MAIN_MODULE) {
+			if (MAIN_MODULE.filename) {
+				MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
 
-		while (MAIN_MODULE) {
-			MAIN_PATH = (MAIN_MODULE.filename ? path.dirname(MAIN_MODULE.filename) : process.cwd()) + path.sep;
-
-			const pathsLen = MAIN_MODULE.paths.length;
-
-			if (pathsLen > 0) {
-				for (let i = 0; i < pathsLen; i++) {
-					try {
-						MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + packageJson));
-						break;
-					} catch(ex) {
-						if (ex.code !== 'ENOENT') {
-							throw ex;
-						};
-
-						MAIN_PATH += '..' + path.sep;
-					};
-				};
-			} else {
 				try {
-					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + packageJson));
+					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
+
+					break whileParent;
+
 				} catch(ex) {
 					if (ex.code !== 'ENOENT') {
 						throw ex;
@@ -100,15 +86,39 @@ function init() {
 				};
 			};
 
-			if (MAIN_PACKAGE) {
-				break;
+			const paths = MAIN_MODULE.paths,
+				pathsLen = paths.length;
+
+			for (let i = 0; i < pathsLen; i++) {
+				const tmp = paths[i].split(/\/|\\/);
+				if (tmp.slice(-1)[0] === 'node_modules') {
+					 tmp.pop();
+				};
+				MAIN_PATH = tmp.join(path.sep) + path.sep;
+
+				try {
+					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
+
+					break whileParent;
+
+				} catch(ex) {
+					if (ex.code !== 'ENOENT') {
+						throw ex;
+					};
+				};
 			};
 
 			MAIN_MODULE = MAIN_MODULE.parent;
 		};
 
-		if (!MAIN_MODULE) {
+		if (!MAIN_MODULE || !MAIN_PATH || !MAIN_PACKAGE) {
 			MAIN_MODULE = require.main || module;
+			if (MAIN_MODULE.filename) {
+				MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
+			} else {
+				MAIN_PATH = process.cwd() + path.sep;
+			};
+			MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
 		};
 	};
 };
@@ -270,7 +280,7 @@ function prepare(packageName, options) {
 	};
 
 		
-	if (!state.packageName || (MAIN_PACKAGE && (MAIN_PACKAGE.name === state.packageName))) {
+	if (!state.packageName || (MAIN_PACKAGE.name === state.packageName)) {
 		state.packageName = '';
 		reduceEnvironment(state);
 	};
@@ -279,8 +289,6 @@ function prepare(packageName, options) {
 	if (state.packageName) {
 		state.package = _require(MAIN_MODULE, state.packageName + path.sep + PACKAGE_JSON_FILE);
 		state.projectName = '';
-	} else if (!state.package) {
-		throw new Error("No '" + PACKAGE_JSON_FILE + "' found.");
 	};
 
 
@@ -359,9 +367,7 @@ const npm_package_config = module.exports = {
 					listNpm()
 						.then(listProject)
 						.then(function() {
-							return combine(state);
-						})
-						.then(function(result) {
+							let result = combine(state);
 							if (get(options, 'beautify', false)) {
 								result = beautify(result);
 							};
