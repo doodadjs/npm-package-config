@@ -323,7 +323,7 @@ const npm_package_config = module.exports = {
 	},
 
 	listAsync: function listAsync(/*optional*/packageName, /*optional*/options) {
-		const Promise = get(options, 'Promise', global.Promise);
+		const Promise = get(options, 'Promise') || global.Promise;
 
 		return new Promise(function(resovle, reject) {
 			try {
