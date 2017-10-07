@@ -61,69 +61,6 @@ const GLOBAL_SECTION_NAME = "; globalconfig ";
 const BUILT_IN_SECTION_NAME = "; builtin config ";
 
 
-let MAIN_MODULE = null,
-	MAIN_PATH = null,
-	MAIN_PACKAGE = null;
-
-
-function init() {
-	if (!MAIN_MODULE) {
-		MAIN_MODULE = module.parent;
-
-		whileParent: while (MAIN_MODULE) {
-			if (MAIN_MODULE.filename) {
-				MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
-
-				try {
-					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
-
-					break whileParent;
-
-				} catch(ex) {
-					if (ex.code !== 'ENOENT') {
-						throw ex;
-					};
-				};
-			};
-
-			const paths = MAIN_MODULE.paths,
-				pathsLen = paths.length;
-
-			for (let i = 0; i < pathsLen; i++) {
-				const tmp = paths[i].split(/\/|\\/);
-				if (tmp.slice(-1)[0] === 'node_modules') {
-					 tmp.pop();
-				};
-				MAIN_PATH = tmp.join(path.sep) + path.sep;
-
-				try {
-					MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
-
-					break whileParent;
-
-				} catch(ex) {
-					if (ex.code !== 'ENOENT') {
-						throw ex;
-					};
-				};
-			};
-
-			MAIN_MODULE = MAIN_MODULE.parent;
-		};
-
-		if (!MAIN_MODULE || !MAIN_PATH || !MAIN_PACKAGE) {
-			MAIN_MODULE = require.main || module;
-			if (MAIN_MODULE.filename) {
-				MAIN_PATH = path.dirname(MAIN_MODULE.filename) + path.sep;
-			} else {
-				MAIN_PATH = process.cwd() + path.sep;
-			};
-			MAIN_PACKAGE = JSON.parse(fs.readFileSync(MAIN_PATH + PACKAGE_JSON_FILE));
-		};
-	};
-};
-
-
 function getLines(fileContent) {
 	return fileContent.split(/\n\r|\r\n|\n|\r/);
 };
@@ -262,10 +199,7 @@ function beautify(config) {
 };
 
 
-function prepare(packageName, options) {
-	init();
-
-
+function prepare(/*optional*/packageName, /*optional*/options) {
 	const state = {
 		config: {
 			package: {}, 
@@ -274,20 +208,82 @@ function prepare(packageName, options) {
 			project: {}, 
 			env: {}, 
 		},
-		package: MAIN_PACKAGE,
+		mainModule: null,
+		mainPath: null,
+		package: null,
 		packageName: packageName || '',
-		projectName: MAIN_PACKAGE.name,
+		projectName: null,
 	};
 
-		
-	if (!state.packageName || (MAIN_PACKAGE.name === state.packageName)) {
+
+	state.mainModule = get(options, 'module') || module.parent;
+
+
+	whileParent: while (state.mainModule) {
+		if (state.mainModule.filename) {
+			state.mainPath = path.dirname(state.mainModule.filename) + path.sep;
+
+			try {
+				state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
+
+				break whileParent;
+
+			} catch(ex) {
+				if (ex.code !== 'ENOENT') {
+					throw ex;
+				};
+			};
+		};
+
+		const paths = state.mainModule.paths,
+			pathsLen = paths.length;
+
+		for (let i = 0; i < pathsLen; i++) {
+			const tmp = paths[i].split(/\/|\\/);
+			if (tmp.slice(-1)[0] === 'node_modules') {
+					tmp.pop();
+			};
+			state.mainPath = tmp.join(path.sep) + path.sep;
+
+			try {
+				state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
+
+				break whileParent;
+
+			} catch(ex) {
+				if (ex.code !== 'ENOENT') {
+					throw ex;
+				};
+			};
+		};
+
+		state.mainModule = state.mainModule.parent;
+	};
+
+	if (!state.mainModule || !state.mainPath || !state.package) {
+		state.mainModule = require.main || module;
+		if (state.mainModule.filename) {
+			state.mainPath = path.dirname(state.mainModule.filename) + path.sep;
+		} else {
+			state.mainPath = process.cwd() + path.sep;
+		};
+		state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
+	};
+
+
+	if (state.package) {
+		state.projectName = state.package.name;
+	};
+
+
+	if (!state.packageName || (state.projectName === state.packageName)) {
 		state.packageName = '';
 		reduceEnvironment(state);
 	};
 
 
 	if (state.packageName) {
-		state.package = _require(MAIN_MODULE, state.packageName + path.sep + PACKAGE_JSON_FILE);
+		state.package = _require(state.mainModule, state.packageName + path.sep + PACKAGE_JSON_FILE);
 		state.projectName = '';
 	};
 
@@ -303,12 +299,12 @@ function prepare(packageName, options) {
 const npm_package_config = module.exports = {
 	listSync: function listSync(/*optional*/packageName, /*optional*/options) {
 		const state = prepare(packageName, options);
-		const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}));
+		const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath}));
 		state.npmVersion = parseInt(lines[0].split('.')[0]);
 		parse(state, lines.slice(1));
 		if (state.npmVersion < 5) {
 			try {
-				parse(state, getLines(fs.readFileSync(MAIN_PATH + '.npmrc', {encoding: 'utf-8'})), 'project');
+				parse(state, getLines(fs.readFileSync(state.mainPath + '.npmrc', {encoding: 'utf-8'})), 'project');
 			} catch(ex) {
 				if (ex.code !== 'ENOENT') {
 					throw ex;
@@ -331,7 +327,7 @@ const npm_package_config = module.exports = {
 
 				function listNpm() {
 					return new Promise(function(resolve, reject) {
-						cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: MAIN_PATH}, function(err, stdout) {
+						cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath}, function(err, stdout) {
 							if (err) {
 								reject(err);
 							} else {
@@ -347,7 +343,7 @@ const npm_package_config = module.exports = {
 				function listProject() {
 					if (state.npmVersion < 5) {
 						return new Promise(function(resolve, reject) {
-							fs.readFile(MAIN_PATH + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
+							fs.readFile(state.mainPath + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
 								if (err) {
 									if (err.code === 'ENOENT') {
 										resolve();
