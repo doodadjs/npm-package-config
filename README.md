@@ -20,3 +20,4 @@ Where:<br/>
 Options:</br>
 &nbsp;&nbsp;&nbsp;&nbsp;"async" : ("npc.list" only) When 'true', the function will return a Promise. When 'false', the function will return the result. Default is 'false'.<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;"Promise" : Provides the Promise constructor. Default is 'global.Promise'.<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;"module" : Provides the Node.js module object used to resolve files. Default is the parent module of 'npm-package-config'.<br/>
