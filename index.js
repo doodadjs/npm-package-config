@@ -32,11 +32,14 @@ const path = require('path'),
 
 
 const natives = {
-	hasKey: Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty),
+	hasKey: global.Object.prototype.hasOwnProperty.call.bind(global.Object.prototype.hasOwnProperty),
+	Symbol: global.Symbol,
+	Error: global.Error,
+	Promise: global.Promise,
 };
 
 
-function get(obj, key, /*optional*/defaultValue) {
+const get = function _get(obj, key, /*optional*/defaultValue) {
 	if ((obj != null) && natives.hasKey(obj, key)) {
 		return obj[key];
 	} else {
@@ -45,11 +48,12 @@ function get(obj, key, /*optional*/defaultValue) {
 };
 
 
-const Module = require('module').Module,
-	_require = function(_module, path) {
-		return Module._load(path, _module);
-	};
-	
+const Module = require('module').Module;
+
+const _require = function __require(_module, path) {
+	return Module._load(path, _module);
+};
+
 
 const PACKAGE_JSON_FILE = 'package.json';
 const NPM_COMMAND = 'npm -v && npm config list';
@@ -61,12 +65,144 @@ const GLOBAL_SECTION_NAME = "; globalconfig ";
 const BUILT_IN_SECTION_NAME = "; builtin config ";
 
 
-function getLines(fileContent) {
+const SYNC_PROMISE_STATE = natives.Symbol();
+
+
+const SyncPromise = function _SyncPromise(cb) {
+	if (this instanceof SyncPromise) {
+		const state = this[SYNC_PROMISE_STATE] = {
+			value: undefined,
+			err: undefined,
+			done: false,
+		};
+
+		const res = function _res(value) {
+			if (!state.done) {
+				if (value instanceof SyncPromise) {
+					value.then(
+							function thenState(newValue) {
+								state.value = newValue;
+								state.done = true;
+							}
+						,
+							function _catchState(newErr) {
+								state.err = newErr;
+								state.done = true;
+							}
+					);
+				} else if ((value !== null) && (typeof value === 'object') && (typeof value.then === 'function') && (typeof value.explode !== 'function')) {
+					throw new natives.Error("The resolved value looks like an asynchronous thenable.");
+				} else {
+					state.value = value;
+					state.done = true;
+				};
+			};
+		};
+
+		const rej = function _rej(err) {
+			if (!state.done) {
+				if (err instanceof SyncPromise) {
+					err.catch(function(newErr) {
+						state.err = newErr;
+						state.done = true;
+					});
+				} else if ((err !== null) && (typeof err === 'object') && (typeof err.then === 'function') && (typeof err.explode !== 'function')) {
+					throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+				} else {
+					state.err = err;
+					state.done = true;
+				};
+			};
+		}
+
+		try {
+			cb(res, rej);
+		} catch(err) {
+			rej(err);
+		};
+
+		if (!state.done) {
+			throw new natives.Error("'SyncPromise' has not been immediatly resolved or rejected.");
+		};
+	} else {
+		throw new natives.Error("Not a 'SyncPromise' object. Did you forget the 'new' operator ?");
+	};
+};
+
+SyncPromise.prototype.then = function then(/*optional*/resCb, /*optional*/rejCb) {
+	const SyncPromise = this.constructor;
+	const state = this[SYNC_PROMISE_STATE];
+	return new SyncPromise(function thenPromise(newResCb, newRejCb) {
+		if (state.done) {
+			if (state.err) {
+				if (rejCb) {
+					newResCb(rejCb(state.err));
+				} else {
+					newRejCb(state.err);
+				};
+			} else {
+				if (resCb) {
+					newResCb(resCb(state.value));
+				} else {
+					newResCb(state.value);
+				};
+			};
+		};
+	});
+};
+
+SyncPromise.prototype.catch = function _catch(/*optional*/rejCb) {
+	const SyncPromise = this.constructor;
+	const state = this[SYNC_PROMISE_STATE];
+	return new SyncPromise(function _catchPromise(newResCb, newRejCb) {
+		if (state.done) {
+			if (state.err) {
+				if (rejCb) {
+					newResCb(rejCb(state.err));
+				} else {
+					newRejCb(state.err);
+				};
+			} else {
+				newResCb(state.value);
+			};
+		};
+	});
+};
+
+SyncPromise.prototype.explode = function _explode() {
+	const state = this[SYNC_PROMISE_STATE];
+	if (state.done) {
+		if (state.err) {
+			throw state.err;
+		} else {
+			return state.value;
+		};
+	} else {
+		throw new natives.Error("'SyncPromise' has not been resolved or rejected.");
+	};
+};
+
+SyncPromise.resolve = function _resolve(value) {
+	const SyncPromise = this;
+	return new SyncPromise(function(res, rej) {
+		res(value);
+	});
+};
+
+SyncPromise.reject = function _reject(err) {
+	const SyncPromise = this;
+	return new SyncPromise(function(res, rej) {
+		rej(err);
+	});
+};
+
+
+const getLines = function _getLines(fileContent) {
 	return fileContent.split(/\n\r|\r\n|\n|\r/);
 };
 
 
-function reduceEnvironment(state) {
+const reduceEnvironment = function _reduceEnvironment(state) {
 	const NPM_KEY = (process.env.npm_package_name ? 'npm_package_config_' : 'npm_config_'),
 		NPM_KEY_LEN = NPM_KEY.length,
 		envKeys = Object.keys(process.env);
@@ -82,7 +218,7 @@ function reduceEnvironment(state) {
 };
 
 
-function reducePackageConfig(result, packageConfig, parent, type) {
+const reducePackageConfig = function _reducePackageConfig(result, packageConfig, parent, type) {
 	const replaceRegEx = /[^A-Za-z0-9_]/g;
 	if ((packageConfig !== null) && (typeof packageConfig === 'object')) {
 		Object.keys(packageConfig).forEach(function(key) {
@@ -106,7 +242,7 @@ function reducePackageConfig(result, packageConfig, parent, type) {
 };
 
 
-function parse(state, lines, /*optional*/section) {
+const parse = function _parse(state, lines, /*optional*/section) {
 	let currentSection = section;
 	lines.forEach(function(line) {
 			line = line.trim();
@@ -154,12 +290,12 @@ function parse(state, lines, /*optional*/section) {
 };
 
 
-function combine(state) {
+const combine = function _combine(state) {
 	return Object.assign({}, state.config.package, state.config.global, state.config.user, state.config.project, state.config.env);
 };
 
 
-function beautify(config) {
+const beautify = function _beautify(config) {
 	return Object.keys(config).reduce(function(result, key) {
 		const value = config[key];
 		if (key.slice(0, 9) === 'package__') {
@@ -199,183 +335,215 @@ function beautify(config) {
 };
 
 
-function prepare(/*optional*/packageName, /*optional*/options) {
-	const state = {
-		config: {
-			package: {}, 
-			global: {}, 
-			user: {}, 
-			project: {}, 
-			env: {}, 
-		},
-		mainModule: null,
-		mainPath: null,
-		package: null,
-		packageName: packageName || '',
-		projectName: null,
+const prepare = function _prepare(Promise, readFile, /*optional*/packageName, /*optional*/options) {
+	const createState = function _createState(mainModule, mainPath, packageJson) {
+		return {
+			config: {
+				package: {}, 
+				global: {}, 
+				user: {}, 
+				project: {}, 
+				env: {}, 
+			},
+			mainModule: mainModule,
+			mainPath: mainPath,
+			package: JSON.parse(packageJson),
+			packageName: packageName || '',
+			projectName: null,
+		};
 	};
 
-
-	state.mainModule = get(options, 'module') || module.parent;
-
-
-	whileParent: while (state.mainModule) {
-		if (state.mainModule.filename) {
-			state.mainPath = path.dirname(state.mainModule.filename) + path.sep;
-
-			try {
-				state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
-
-				break whileParent;
-
-			} catch(ex) {
-				if (ex.code !== 'ENOENT') {
-					throw ex;
-				};
-			};
-		};
-
-		const paths = state.mainModule.paths,
-			pathsLen = paths.length;
-
-		for (let i = 0; i < pathsLen; i++) {
-			const tmp = paths[i].split(/\/|\\/);
+	const loopModulePaths = function _loopModulePaths(_module, index) {
+		if (_module && _module.paths && (index < _module.paths.length)) {
+			const tmp = _module.paths[index].split(/\/|\\/);
 			if (tmp.slice(-1)[0] === 'node_modules') {
-					tmp.pop();
+				tmp.pop();
 			};
-			state.mainPath = tmp.join(path.sep) + path.sep;
 
-			try {
-				state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
+			const mainPath = tmp.join(path.sep) + path.sep;
 
-				break whileParent;
+			return readFile(mainPath + PACKAGE_JSON_FILE, {encoding: 'utf-8'})
+				.then(function(json) {
+					return createState(_module, mainPath, json);
+				})
+				.catch(function(err) {
+					if (err.code === 'ENOENT') {
+						return loopModulePaths(_module, index + 1);
+					} else {
+						throw err;
+					};
+				});
+		} else {
+			return Promise.resolve(null);
+		};
+	};
 
-			} catch(ex) {
-				if (ex.code !== 'ENOENT') {
-					throw ex;
+	const loopParents = function _loopParents(_module) {
+		if (_module && _module.filename) {
+			const mainPath = path.dirname(_module.filename) + path.sep;
+
+			return readFile(mainPath + PACKAGE_JSON_FILE, {encoding: 'utf-8'})
+				.then(function(json) {
+					return createState(_module, mainPath, json);
+				})
+				.catch(function(err) {
+					if (err.code === 'ENOENT') {
+						return loopModulePaths(_module, 0)
+							.then(function(state) {
+								if (state) {
+									return state;
+								} else {
+									return loopParents(_module.parent);
+								};
+							});
+					} else {
+						throw err;
+					};
+				});
+		} else {
+			return Promise.resolve(null);
+		};
+	};
+
+	return loopParents(get(options, 'module') || module.parent)
+		.then(function(state) {
+			if (state) {
+				return state;
+			} else {
+				const mainModule = require.main || module;
+				const mainPath = (mainModule.filename ? path.dirname(mainModule.filename) + path.sep : process.cwd() + path.sep);
+				return readFile(mainPath + PACKAGE_JSON_FILE, {encoding: 'utf-8'})
+					.then(function(json) {
+						return createState(mainModule, mainPath, json);
+					});
+			};
+		})
+		.then(function(state) {
+			if (state.package) {
+				state.projectName = state.package.name;
+			};
+
+			if (!state.packageName || (state.projectName === state.packageName)) {
+				state.packageName = '';
+				reduceEnvironment(state);
+			};
+
+			if (state.packageName) {
+				state.package = _require(state.mainModule, state.packageName + path.sep + PACKAGE_JSON_FILE);
+				state.projectName = '';
+			};
+
+			reducePackageConfig(state.config, state.package, 'package_', 'package');
+			reducePackageConfig(state.config, state.package.config, '', 'config');
+
+			return state;
+		});
+};
+
+
+const list = function _list(Promise, readFile, exec, /*optional*/packageName, /*optional*/options) {
+	return prepare(Promise, readFile, packageName, options)
+		.then(function(state) {
+			const listNpm = function _listNpm() {
+				return exec(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath})
+					.then(function(stdout) {
+						const lines = getLines(stdout);
+						state.npmVersion = parseInt(lines[0].split('.')[0]);
+						parse(state, lines.slice(1));
+					});
+			};
+
+			const listProject = function _listProject() {
+				if (state.npmVersion < 5) {
+					return readFile(state.mainPath + '.npmrc', {encoding: 'utf-8'})
+						.then(function(fileContent) {
+							parse(state, getLines(fileContent), 'project');
+						})
+						.catch(function(err) {
+							if (err.code !== 'ENOENT') {
+								throw err;
+							};
+						});
+				} else {
+					return Promise.resolve();
 				};
 			};
-		};
-
-		state.mainModule = state.mainModule.parent;
-	};
-
-	if (!state.mainModule || !state.mainPath || !state.package) {
-		state.mainModule = require.main || module;
-		if (state.mainModule.filename) {
-			state.mainPath = path.dirname(state.mainModule.filename) + path.sep;
-		} else {
-			state.mainPath = process.cwd() + path.sep;
-		};
-		state.package = JSON.parse(fs.readFileSync(state.mainPath + PACKAGE_JSON_FILE));
-	};
-
-
-	if (state.package) {
-		state.projectName = state.package.name;
-	};
-
-
-	if (!state.packageName || (state.projectName === state.packageName)) {
-		state.packageName = '';
-		reduceEnvironment(state);
-	};
-
-
-	if (state.packageName) {
-		state.package = _require(state.mainModule, state.packageName + path.sep + PACKAGE_JSON_FILE);
-		state.projectName = '';
-	};
-
-
-	reducePackageConfig(state.config, state.package, 'package_', 'package');
-	reducePackageConfig(state.config, state.package.config, '', 'config');
-
-
-	return state;
+			
+			return listNpm()
+				.then(listProject)
+				.then(function() {
+					let result = combine(state);
+					if (get(options, 'beautify', false)) {
+						result = beautify(result);
+					};
+					return result;
+				});
+	});
 };
 
 
 const npm_package_config = module.exports = {
 	listSync: function listSync(/*optional*/packageName, /*optional*/options) {
-		const state = prepare(packageName, options);
-		const lines = getLines(cp.execSync(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath}));
-		state.npmVersion = parseInt(lines[0].split('.')[0]);
-		parse(state, lines.slice(1));
-		if (state.npmVersion < 5) {
-			try {
-				parse(state, getLines(fs.readFileSync(state.mainPath + '.npmrc', {encoding: 'utf-8'})), 'project');
-			} catch(ex) {
-				if (ex.code !== 'ENOENT') {
-					throw ex;
+		const readFileSync = function _readFileSync(fname, options) {
+			return new SyncPromise(function(res, rej) {
+				try {
+					res(fs.readFileSync(fname, options));
+				} catch(err) {
+					rej(err);
 				};
-			};
+			});
 		};
-		let result = combine(state);
-		if (get(options, 'beautify', false)) {
-			result = beautify(result);
+
+		const execSync = function _execSync(cmd, options) {
+			return new SyncPromise(function(res, rej) {
+				try {
+					res(cp.execSync(cmd, options));
+				} catch(err) {
+					rej(err);
+				};
+			});
 		};
-		return result;
+
+		return list(SyncPromise, readFileSync, execSync, packageName, options)
+			.explode();
 	},
 
 	listAsync: function listAsync(/*optional*/packageName, /*optional*/options) {
-		const Promise = get(options, 'Promise') || global.Promise;
+		const Promise = get(options, 'Promise') || natives.Promise;
 
-		return new Promise(function(resovle, reject) {
-			try {
-				const state = prepare(packageName, options);
-
-				function listNpm() {
-					return new Promise(function(resolve, reject) {
-						cp.exec(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath}, function(err, stdout) {
-							if (err) {
-								reject(err);
-							} else {
-								const lines = getLines(stdout);
-								state.npmVersion = parseInt(lines[0].split('.')[0]);
-								parse(state, lines.slice(1));
-								resolve();
-							};
-						});
+		const readFileAsync = function _readFileAsync(fname, options) {
+			return new Promise(function(res, rej) {
+				try {
+					fs.readFile(fname, options, function(err, data) {
+						if (err) {
+							rej(err);
+						} else {
+							res(data);
+						};
 					});
+				} catch(err) {
+					rej(err);
 				};
+			});
+		};
 
-				function listProject() {
-					if (state.npmVersion < 5) {
-						return new Promise(function(resolve, reject) {
-							fs.readFile(state.mainPath + '.npmrc', {encoding: 'utf-8'}, function(err, fileContent) {
-								if (err) {
-									if (err.code === 'ENOENT') {
-										resolve();
-									} else {
-										reject(err);
-									};
-								} else {
-									parse(state, getLines(fileContent), 'project');
-									resolve();
-								};
-							});
-						});
-					};
+		const execAsync = function _execAsync(cmd, options) {
+			return new Promise(function(res, rej) {
+				try {
+					cp.exec(cmd, options, function(err, stdout) {
+						if (err) {
+							rej(err);
+						} else {
+							res(stdout);
+						};
+					});
+				} catch(err) {
+					rej(err);
 				};
-			
-				resovle(
-					listNpm()
-						.then(listProject)
-						.then(function() {
-							let result = combine(state);
-							if (get(options, 'beautify', false)) {
-								result = beautify(result);
-							};
-							return result;
-						})
-				);
-				
+			});
+		};
 
-			} catch(ex) {
-				reject(ex);
-			};
-		});
+		return list(Promise, readFileAsync, execAsync, packageName, options);
 	},
 
 	list: function list(/*optional*/packageName, /*optional*/options) {
