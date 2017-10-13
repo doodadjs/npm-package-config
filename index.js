@@ -78,20 +78,22 @@ const SyncPromise = function _SyncPromise(cb) {
 
 		const res = function _res(value) {
 			if (!state.done) {
-				if (value instanceof SyncPromise) {
-					value.then(
-							function thenState(newValue) {
-								state.value = newValue;
-								state.done = true;
-							}
-						,
-							function _catchState(newErr) {
-								state.err = newErr;
-								state.done = true;
-							}
-					);
-				} else if ((value !== null) && (typeof value === 'object') && (typeof value.then === 'function') && (typeof value.explode !== 'function')) {
-					throw new natives.Error("The resolved value looks like an asynchronous thenable.");
+				if ((value !== null) && (typeof value === 'object') && (typeof value.then === 'function')) {
+					if (value instanceof SyncPromise) {
+						value.then(
+								function thenState(newValue) {
+									state.value = newValue;
+									state.done = true;
+								}
+							,
+								function _catchState(newErr) {
+									state.err = newErr;
+									state.done = true;
+								}
+						);
+					} else {
+						throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+					};
 				} else {
 					state.value = value;
 					state.done = true;
@@ -101,13 +103,15 @@ const SyncPromise = function _SyncPromise(cb) {
 
 		const rej = function _rej(err) {
 			if (!state.done) {
-				if (err instanceof SyncPromise) {
-					err.catch(function(newErr) {
-						state.err = newErr;
-						state.done = true;
-					});
-				} else if ((err !== null) && (typeof err === 'object') && (typeof err.then === 'function') && (typeof err.explode !== 'function')) {
-					throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+				if ((err !== null) && (typeof err === 'object') && (typeof err.then === 'function')) {
+					if (err instanceof SyncPromise) {
+						err.catch(function(newErr) {
+							state.err = newErr;
+							state.done = true;
+						});
+					} else {
+						throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+					};
 				} else {
 					state.err = err;
 					state.done = true;
