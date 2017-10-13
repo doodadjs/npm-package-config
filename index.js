@@ -86,7 +86,7 @@ const SyncPromise = function _SyncPromise(cb) {
 									state.done = true;
 								}
 							,
-								function _catchState(newErr) {
+								function catchState(newErr) {
 									state.err = newErr;
 									state.done = true;
 								}
@@ -105,10 +105,17 @@ const SyncPromise = function _SyncPromise(cb) {
 			if (!state.done) {
 				if ((err !== null) && (typeof err === 'object') && (typeof err.then === 'function')) {
 					if (err instanceof SyncPromise) {
-						err.catch(function(newErr) {
-							state.err = newErr;
-							state.done = true;
-						});
+						err.then(
+								function thenState(newValue) {
+									state.value = newValue;
+									state.done = true;
+								}
+							,
+								function catchState(newErr) {
+									state.err = newErr;
+									state.done = true;
+								}
+						);
 					} else {
 						throw new natives.Error("The rejected value looks like an asynchronous thenable.");
 					};
