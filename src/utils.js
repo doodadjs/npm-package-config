@@ -26,4 +26,24 @@ THE SOFTWARE.
 "use strict";
 
 
-module.exports = require('./src/npc.js');
+const Module = require('module').Module;
+
+const natives = require('./natives.js');
+
+module.exports = {
+	get: function _get(obj, key, /*optional*/defaultValue) {
+		if ((obj != null) && natives.hasKey(obj, key)) {
+			return obj[key];
+		} else {
+			return defaultValue;
+		};
+	},
+
+	require: function _require(_module, path) {
+		return Module._load(path, _module);
+	},
+
+	getLines: function _getLines(fileContent) {
+		return fileContent.split(/\n\r|\r\n|\n|\r/);
+	},
+};

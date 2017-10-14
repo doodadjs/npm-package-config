@@ -26,4 +26,9 @@ THE SOFTWARE.
 "use strict";
 
 
-module.exports = require('./src/npc.js');
+module.exports = {
+	hasKey: global.Object.prototype.hasOwnProperty.call.bind(global.Object.prototype.hasOwnProperty),
+	Symbol: global.Symbol,
+	Error: global.Error,
+	Promise: global.Promise,
+};
