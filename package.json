@@ -12,6 +12,7 @@
     "config"
   ],
   "files": [
+    "src",
     "test",
     "index.js",
     "README.md",
