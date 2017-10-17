@@ -56,7 +56,7 @@ const SyncPromise = function _SyncPromise(cb) {
 								}
 						);
 					} else {
-						throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+						throw new natives.Error("The value looks like an asynchronous thenable.");
 					};
 				} else {
 					state.value = value;
@@ -81,7 +81,7 @@ const SyncPromise = function _SyncPromise(cb) {
 								}
 						);
 					} else {
-						throw new natives.Error("The rejected value looks like an asynchronous thenable.");
+						throw new natives.Error("The value looks like an asynchronous thenable.");
 					};
 				} else {
 					state.err = err;
