@@ -25,8 +25,8 @@ THE SOFTWARE.
 
 "use strict";
 
-
-const Module = require('module').Module;
+const nodeModule = require('module');
+const compareVersions = require('compare-versions');
 
 const natives = require('./natives.js');
 
@@ -39,9 +39,15 @@ module.exports = {
 		};
 	},
 
-	require: function _require(_module, path) {
-		return Module._load(path, _module);
-	},
+	require: (compareVersions(process.versions.node, '8.9.0') >= 0 ? 
+		function _require(_module, path) {
+			return require(require.resolve(path, {paths: _module.paths}));
+		}
+	:
+		function _require(_module, path) {
+			return nodeModule.Module._load(path, _module);
+		}
+	),
 
 	getLines: function _getLines(fileContent) {
 		return fileContent.split(/\n\r|\r\n|\n|\r/);
