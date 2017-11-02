@@ -19,6 +19,9 @@
     "LICENSE",
     "browserify.js",
     "tonic.js",
+    ".eslintignore",
+    ".gitignore",
+    ".npmrc",
     ".travis.yml"
   ],
   "repository": {
