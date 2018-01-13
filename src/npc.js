@@ -146,12 +146,15 @@ const beautify = function _beautify(config) {
 			// <PRB> npm uses '_' to illustrate private variables
 			key = 'package_$' + key.slice(9);
 		};
-		key = key.replace(/__/g, '.').split('_');
+		const keys = key.replace(/__/g, '.').split('_');
 		let r = result;
-		for (let i = 0; i < key.length - 1; i++) {
-			let k = key[i];
+		for (let i = 0; i < keys.length - 1; i++) {
+			let k = keys[i];
 			if (!k) {
 				continue;
+			};
+			if ((r == null) || (typeof r !== 'object')) {
+				break;
 			};
 			if (k[0] === '$') {
 				// <PRB> npm uses '_' to illustrate private variables
@@ -162,17 +165,15 @@ const beautify = function _beautify(config) {
 			};
 			r = r[k];
 		};
-		key = key[key.length - 1];
-		if (key) {
-			if (key[0] === '$') {
-				// <PRB> npm uses '_' to illustrate private variables
-				key = '_' + key.slice(1);
+		if ((r !== null) && (typeof r === 'object')) {
+			let k = keys[keys.length - 1];
+			if (k) {
+				if (k[0] === '$') {
+					// <PRB> npm uses '_' to illustrate private variables
+					k = '_' + k.slice(1);
+				};
+				r[k] = value;
 			};
-		} else {
-			key = '_';
-		};
-		if ((r !== null) && (typeof r === 'object') && key) {
-			r[key] = value;
 		};
 		return result;
 	}, {});
