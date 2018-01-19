@@ -78,7 +78,7 @@ const reducePackageConfig = function _reducePackageConfig(result, packageConfig,
 			};
 		});
 	} else {
-		let key = parent.slice(0, -1);
+		const key = parent.slice(0, -1);
 		if (key) {
 			result.package[key] = packageConfig;
 		};
@@ -126,6 +126,7 @@ const parse = function _parse(state, lines, /*optional*/section) {
 					try {
 						val = JSON.parse(val);
 					} catch(ex) {
+						// Do nothing
 					};
 					state.config[currentSection][key] = val;
 				};
@@ -293,7 +294,7 @@ const list = function _list(Promise, readFile, exec, /*optional*/packageName, /*
 				return exec(NPM_COMMAND, {encoding: 'utf-8', cwd: state.mainPath})
 					.then(function(stdout) {
 						const lines = utils.getLines(stdout);
-						state.npmVersion = parseInt(lines[0].split('.')[0]);
+						state.npmVersion = parseInt(lines[0].split('.')[0], 10);
 						parse(state, lines.slice(1));
 					});
 			};

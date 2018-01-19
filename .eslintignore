@@ -1,9 +1,11 @@
 ﻿node_modules
 
+browserify
 build
 dist
 lib
 test
 
-*.inc
+*.inc.js
 *.templ.js
+webpack.config.js
