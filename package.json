@@ -38,5 +38,8 @@
   "browser": "./browserify.js",
   "dependencies": {
     "compare-versions": "^3.1.0"
+  },
+  "devDependencies": {
+    "@doodad-js/eslint-config-base": "^1.0.0"
   }
 }
