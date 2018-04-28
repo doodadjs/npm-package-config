@@ -1,3 +1,7 @@
+# Travis scripts
+.curbranch
+.lastrev
+
 # Logs
 logs
 *.log
