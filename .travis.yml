@@ -5,5 +5,5 @@ node_js:
   - "8"
   - "7"
   - "6"
-before_script: NODE_ENV=development npm install && npm run make
+before_script: NODE_ENV=development npm install && node -r "@doodad-js/make/make" . make
 script: npm run travis_app_test && npm run travis_cli_test
