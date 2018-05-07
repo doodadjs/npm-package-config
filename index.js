@@ -26,4 +26,4 @@ THE SOFTWARE.
 "use strict";
 
 
-module.exports = require('./src/npc.js');
+module.exports = (['dev', 'development'].indexOf(process.env.NODE_ENV) >= 0 ? require('./src/npc.js') :  require('./build/npc.js'));
