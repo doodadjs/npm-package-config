@@ -1,6 +1,6 @@
 {
   "name": "@doodad-js/npc",
-  "version": "0.8.1",
+  "version": "0.0.0",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
   "scripts": {
