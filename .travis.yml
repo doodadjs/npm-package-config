@@ -1,8 +1,9 @@
 language: node_js
 node_js:
+  - "10"
   - "9"
   - "8"
   - "7"
   - "6"
-before_script: pushd ./test/test_app && npm install && mv npmrc.rename_me .npmrc && cp -r node_modules.rename_me/* node_modules/ && popd
+before_script: pushd ./test/test_app && npm install && mv npmrc.rename_me .npmrc && cp -r node_modules.rename_me/* node_modules/ && popd && npm run lint
 script: npm run travis_app_test && npm run travis_cli_test
