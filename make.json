@@ -37,7 +37,13 @@
 					"name": "lint"
 				},
 				{
-					"class": "Make.Update.Manifest"
+					"class": "Make.Folder.Delete",
+					"destination": "%BUILDDIR%"
+				},
+				{
+					"class": "Make.Folder.Copy",
+					"source": "%SOURCEDIR%",
+					"destination": "%BUILDDIR%"
 				},
 				{
 					"class": "Make.File.Copy",
