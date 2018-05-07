@@ -26,7 +26,7 @@ THE SOFTWARE.
 "use strict";
 
 
-const natives = require('./natives.js')
+const natives = require('./natives.js');
 
 
 const SYNC_PROMISE_STATE = natives.Symbol();
@@ -34,26 +34,28 @@ const SYNC_PROMISE_STATE = natives.Symbol();
 
 const SyncPromise = function _SyncPromise(cb) {
 	if (this instanceof SyncPromise) {
-		const state = this[SYNC_PROMISE_STATE] = {
+		const state = {
 			value: undefined,
 			err: undefined,
 			done: false,
 		};
+
+		this[SYNC_PROMISE_STATE] = state;
 
 		const res = function _res(value) {
 			if (!state.done) {
 				if ((value !== null) && (typeof value === 'object') && (typeof value.then === 'function')) {
 					if (value instanceof SyncPromise) {
 						value.then(
-								function thenState(newValue) {
-									state.value = newValue;
-									state.done = true;
-								}
+							function thenState(newValue) {
+								state.value = newValue;
+								state.done = true;
+							}
 							,
-								function catchState(newErr) {
-									state.err = newErr;
-									state.done = true;
-								}
+							function catchState(newErr) {
+								state.err = newErr;
+								state.done = true;
+							}
 						);
 					} else {
 						throw new natives.Error("The value looks like an asynchronous thenable.");
@@ -70,15 +72,15 @@ const SyncPromise = function _SyncPromise(cb) {
 				if ((err !== null) && (typeof err === 'object') && (typeof err.then === 'function')) {
 					if (err instanceof SyncPromise) {
 						err.then(
-								function thenState(newValue) {
-									state.value = newValue;
-									state.done = true;
-								}
+							function thenState(newValue) {
+								state.value = newValue;
+								state.done = true;
+							}
 							,
-								function catchState(newErr) {
-									state.err = newErr;
-									state.done = true;
-								}
+							function catchState(newErr) {
+								state.err = newErr;
+								state.done = true;
+							}
 						);
 					} else {
 						throw new natives.Error("The value looks like an asynchronous thenable.");
@@ -88,7 +90,7 @@ const SyncPromise = function _SyncPromise(cb) {
 					state.done = true;
 				};
 			};
-		}
+		};
 
 		try {
 			cb(res, rej);

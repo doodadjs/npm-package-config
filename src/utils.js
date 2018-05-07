@@ -39,13 +39,13 @@ module.exports = {
 		};
 	},
 
-	require: (compareVersions(process.versions.node, '8.9.0') >= 0 ? 
+	require: (compareVersions(process.versions.node, '8.9.0') >= 0 ?
 		function _require(_module, path) {
 			/* eslint import/no-dynamic-require: "off" */
 			/* eslint global-require: "off" */
 			return require(require.resolve(path, {paths: _module.paths}));
 		}
-	:
+		:
 		function _require(_module, path) {
 			return nodeModule.Module._load(path, _module);
 		}

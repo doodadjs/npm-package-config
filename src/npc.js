@@ -67,9 +67,9 @@ const reducePackageConfig = function _reducePackageConfig(result, packageConfig,
 	if ((packageConfig !== null) && (typeof packageConfig === 'object')) {
 		Object.keys(packageConfig).forEach(function(key) {
 			if (
-					((type === 'package') && (key !== 'config') && (key !== 'dependencies')) ||
+				((type === 'package') && (key !== 'config') && (key !== 'dependencies')) ||
 					(type === 'config')
-				) {
+			) {
 				const val = packageConfig[key];
 				key = key.replace(replaceRegEx, '_');
 				if (key) {
@@ -89,49 +89,49 @@ const reducePackageConfig = function _reducePackageConfig(result, packageConfig,
 const parse = function _parse(state, lines, /*optional*/section) {
 	let currentSection = section;
 	lines.forEach(function(line) {
-			line = line.trim();
-			if (!section && line.startsWith(CLI_SECTION_NAME)) {
-				currentSection = 'cli';
-			} else if (!section && (state.npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) { // npm v5
-				currentSection = 'project';
-			} else if (!section && line.startsWith(USER_SECTION_NAME)) {
-				currentSection = 'user';
-			} else if (!section && line.startsWith(GLOBAL_SECTION_NAME)) {
-				currentSection = 'global';
-			} else if (!section && line.startsWith(BUILT_IN_SECTION_NAME)) {
-				currentSection = 'builtin';
-			} else if (!line || line.startsWith(';')) {
-				// Skip comments
-			} else if (currentSection && (currentSection !== 'cli') && (currentSection !== 'builtin')) {
-				const posKey = line.indexOf('=');
-				let key = line.slice(0, posKey).trim();
-				if (key.startsWith("'")) {
-					key = key.slice(1, -1);
-				};
-				const posPrefix = key.lastIndexOf(':');
-				const prefix = ((posPrefix >= 0) ? key.slice(0, posPrefix) : '');
-				key = ((posPrefix >= 0) ? key.slice(posPrefix + 1) : key);
-				if (key) {
-					if (!prefix && (currentSection !== 'project')) {
-						// Not the package's key/value pair
-						return;
-					};
-					if (state.projectName && (prefix === state.projectName)) {
-						// That's a key/value pair of the current application
-					} else if (prefix !== state.packageName) { // NOTE: Values can be empty strings
-						// Not the package's key/value pair
-						return;
-					};
-					let val = line.slice(posKey + 1).trim();
-					try {
-						val = JSON.parse(val);
-					} catch(ex) {
-						// Do nothing
-					};
-					state.config[currentSection][key] = val;
-				};
+		line = line.trim();
+		if (!section && line.startsWith(CLI_SECTION_NAME)) {
+			currentSection = 'cli';
+		} else if (!section && (state.npmVersion >= 5) && line.startsWith(PROJECT_SECTION_NAME)) { // npm v5
+			currentSection = 'project';
+		} else if (!section && line.startsWith(USER_SECTION_NAME)) {
+			currentSection = 'user';
+		} else if (!section && line.startsWith(GLOBAL_SECTION_NAME)) {
+			currentSection = 'global';
+		} else if (!section && line.startsWith(BUILT_IN_SECTION_NAME)) {
+			currentSection = 'builtin';
+		} else if (!line || line.startsWith(';')) {
+			// Skip comments
+		} else if (currentSection && (currentSection !== 'cli') && (currentSection !== 'builtin')) {
+			const posKey = line.indexOf('=');
+			let key = line.slice(0, posKey).trim();
+			if (key.startsWith("'")) {
+				key = key.slice(1, -1);
 			};
-		});
+			const posPrefix = key.lastIndexOf(':');
+			const prefix = ((posPrefix >= 0) ? key.slice(0, posPrefix) : '');
+			key = ((posPrefix >= 0) ? key.slice(posPrefix + 1) : key);
+			if (key) {
+				if (!prefix && (currentSection !== 'project')) {
+					// Not the package's key/value pair
+					return;
+				};
+				if (state.projectName && (prefix === state.projectName)) {
+					// That's a key/value pair of the current application
+				} else if (prefix !== state.packageName) { // NOTE: Values can be empty strings
+					// Not the package's key/value pair
+					return;
+				};
+				let val = line.slice(posKey + 1).trim();
+				try {
+					val = JSON.parse(val);
+				} catch(ex) {
+					// Do nothing
+				};
+				state.config[currentSection][key] = val;
+			};
+		};
+	});
 };
 
 
@@ -185,11 +185,11 @@ const prepare = function _prepare(Promise, readFile, /*optional*/packageName, /*
 	const createState = function _createState(mainModule, mainPath, packageJson) {
 		return {
 			config: {
-				package: {}, 
-				global: {}, 
-				user: {}, 
-				project: {}, 
-				env: {}, 
+				package: {},
+				global: {},
+				user: {},
+				project: {},
+				env: {},
 			},
 			mainModule: mainModule,
 			mainPath: mainPath,
@@ -314,7 +314,7 @@ const list = function _list(Promise, readFile, exec, /*optional*/packageName, /*
 					return Promise.resolve();
 				};
 			};
-			
+
 			return listNpm()
 				.then(listProject)
 				.then(function() {
@@ -324,7 +324,7 @@ const list = function _list(Promise, readFile, exec, /*optional*/packageName, /*
 					};
 					return result;
 				});
-	});
+		});
 };
 
 
