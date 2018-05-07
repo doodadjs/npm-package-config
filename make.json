@@ -33,7 +33,21 @@
 		"make": {
 			"operations": [
 				{
+					"class": "Make.Task",
+					"name": "lint"
+				},
+				{
 					"class": "Make.Update.Manifest"
+				},
+				{
+					"class": "Make.File.Copy",
+					"source": "./test/test_app/npmrc.rename_me",
+					"destination": "./test/test_app/.npmrc"
+				},
+				{
+					"class": "Make.Folder.Copy",
+					"source": "./test/test_app/node_modules.rename_me",
+					"destination": "./test/test_app/node_modules"
 				}
 			]
 		},
