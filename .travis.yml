@@ -5,6 +5,12 @@ node_js:
   - "8"
   - "7"
   - "6"
-install: NODE_ENV=development npm install
-before_script: pushd ./test/test_app/ && npm install && popd && NODE_ENV=development node -r "@doodad-js/make/make" . make
+cache:
+  directories:
+    - $HOME/build/clean
+env:
+  - NODE_ENV=development
+  - NODE_ENV=production
+before_install: git clone --depth=1 https://github.com/doodadjs/travis_scripts.git ~/travis_scripts && chmod +x ~/travis_scripts/install.sh
+install: TARGET=$HOME/build/clean; export DD_REPOS=`cd $TRAVIS_BUILD_DIR/.. && pwd`; mkdir -p $TARGET && cd $TARGET && ~/travis_scripts/install.sh && cd node_modules/@doodad-js/npc
 script: npm run travis_app_test && npm run travis_cli_test
