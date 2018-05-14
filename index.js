@@ -25,5 +25,13 @@ THE SOFTWARE.
 
 "use strict";
 
+try {
+	module.exports = (['dev', 'development'].indexOf(process.env.NODE_ENV) >= 0 ? require('./src/npc.js') :  require('./build/npc.js'));
+} catch(ex) {
+	if (ex.code !== 'MODULE_NOT_FOUND') {
+		throw ex;
+	};
 
-module.exports = (['dev', 'development'].indexOf(process.env.NODE_ENV) >= 0 ? require('./src/npc.js') :  require('./build/npc.js'));
+	// Fall back to source code
+	module.exports = require('./src/npc.js');
+};
