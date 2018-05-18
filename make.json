@@ -44,21 +44,61 @@
 					class: "Make.Folder.Copy",
 					source: "%SOURCEDIR%",
 					destination: "%BUILDDIR%"
-				},
-				{
-					class: "Make.File.Copy",
-					source: "./test/test_app/npmrc.rename_me",
-					destination: "./test/test_app/.npmrc"
-				},
-				{
-					class: "Make.Folder.Copy",
-					source: "./test/test_app/node_modules.rename_me",
-					destination: "./test/test_app/node_modules"
 				}
 			]
 		},
 		test: {
-			operations: []
-		}
+			operations: [
+				{
+					class: "Make.If",
+					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/.npmrc', {isPath: true}))",
+					operations: [
+						{
+							class: "Make.Spawn.File",
+							source: "npm",
+							shell: "true",
+							args: ['install'],
+							target: "%PACKAGEDIR%/test/test_app/"
+						},
+						{
+							class: "Make.File.Copy",
+							source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me",
+							destination: "%PACKAGEDIR%/test/test_app/.npmrc"
+						},
+						{
+							class: "Make.Folder.Copy",
+							source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me",
+							destination: "%PACKAGEDIR%/test/test_app/node_modules"
+						}
+					]
+				},
+				{
+					class: "Make.Task",
+					name: "test_app"
+				},
+				{
+					class: "Make.Task",
+					name: "test_cli"
+				}
+			]
+		},
+		"test_app": {
+			"operations": [
+				{
+					class: "Make.Spawn.Node",
+					source: "%PACKAGEDIR%/test/test_app/main.js",
+					target: "%PACKAGEDIR%/test/test_app/"
+				}
+			]
+		},
+		"test_cli": {
+			"operations": [
+				{
+					class: "Make.Spawn.Node",
+					source: "%PACKAGEDIR%/test/test_app/lib/cli.js",
+					target: "%PACKAGEDIR%/test/test_app/lib/"
+				}
+			]
+		},
 	}
 }
