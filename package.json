@@ -3,10 +3,6 @@
   "version": "0.0.0",
   "description": "Retrieves and combines package's configuration like running from 'npm run'",
   "main": "index.js",
-  "scripts": {
-    "travis_app_test": "node ./test/test_app/main.js",
-    "travis_cli_test": "node ./test/test_app/lib/cli.js"
-  },
   "keywords": [
     "npm",
     "config"
