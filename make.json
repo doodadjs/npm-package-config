@@ -35,16 +35,16 @@
 				{
 					class: "Make.Task",
 					name: "lint"
-				},
-				{
-					class: "Make.Folder.Delete",
-					destination: "%BUILDDIR%"
-				},
-				{
-					class: "Make.Folder.Copy",
-					source: "%SOURCEDIR%",
-					destination: "%BUILDDIR%"
 				}
+				//{
+				//	class: "Make.Folder.Delete",
+				//	destination: "%BUILDDIR%"
+				//},
+				//{
+				//	class: "Make.Folder.Copy",
+				//	source: "%SOURCEDIR%",
+				//	destination: "%BUILDDIR%"
+				//}
 			]
 		},
 		test: {
