@@ -77,22 +77,6 @@
 		test: {
 			operations: [
 				{
-					class: "Make.If",
-					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/.npmrc', {isPath: true}))",
-					operations: [
-						{
-							class: "Make.File.Copy",
-							source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me",
-							destination: "%PACKAGEDIR%/test/test_app/.npmrc"
-						},
-						{
-							class: "Make.Folder.Copy",
-							source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me",
-							destination: "%PACKAGEDIR%/test/test_app/node_modules"
-						}
-					]
-				},
-				{
 					class: "Make.Task",
 					name: "test_app"
 				},
