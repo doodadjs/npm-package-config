@@ -33,25 +33,37 @@
 		make: {
 			operations: [
 				{
-					class: "Make.Task",
-					name: "lint"
-				},
-				{
 					class: "Make.Folder.Copy",
 					source: "%SOURCEDIR%/test",
 					destination: "%PACKAGEDIR%/test"
 				},
 				{
-					class: "Make.Folder.Delete",
-					source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me"
+					class: "Make.Folder.Copy",
+					source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me",
+					destination: "%PACKAGEDIR%/test/test_app/node_modules"
 				},
 				{
-					class: "Make.File.Delete",
-					source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me"
+					class: "Make.File.Copy",
+					source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me",
+					destination: "%PACKAGEDIR%/test/test_app/.npmrc"
+				}
+			]
+		},
+		test: {
+			operations: [
+				{
+					class: "Make.If",
+					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test', {isPath: true}))",
+					operations: [
+						{
+							class: "Make.Task",
+							name: "make"
+						}
+					]
 				},
 				{
 					class: "Make.If",
-					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/node_modules', {isPath: true}))",
+					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/node_modules/tap', {isPath: true}))",
 					operations: [
 						{
 							class: "Make.Spawn.File",
@@ -59,23 +71,15 @@
 							shell: "true",
 							args: ['install'],
 							target: "%PACKAGEDIR%/test/test_app/"
+						},
+						// Our packages have been deleted by NPM...
+						{
+							class: "Make.Folder.Copy",
+							source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me",
+							destination: "%PACKAGEDIR%/test/test_app/node_modules"
 						}
 					]
 				},
-				{
-					class: "Make.Folder.Copy",
-					source: "%SOURCEDIR%/test/test_app/node_modules.rename_me",
-					destination: "%PACKAGEDIR%/test/test_app/node_modules"
-				},
-				{
-					class: "Make.File.Copy",
-					source: "%SOURCEDIR%/test/test_app/npmrc.rename_me",
-					destination: "%PACKAGEDIR%/test/test_app/.npmrc"
-				}
-			]
-		},
-		test: {
-			operations: [
 				{
 					class: "Make.Task",
 					name: "test_app"
