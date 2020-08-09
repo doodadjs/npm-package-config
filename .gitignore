@@ -2,6 +2,7 @@
 browserify
 build
 dist
+test
 config.json
 index.js
 index.mjs
