@@ -35,16 +35,43 @@
 				{
 					class: "Make.Task",
 					name: "lint"
+				},
+				{
+					class: "Make.Folder.Copy",
+					source: "%SOURCEDIR%/test",
+					destination: "%PACKAGEDIR%/test"
+				},
+				{
+					class: "Make.Folder.Delete",
+					destination: "%PACKAGEDIR%/test/test_app/node_modules.rename_me"
+				},
+				{
+					class: "Make.File.Delete",
+					source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me"
+				},
+				{
+					class: "Make.If",
+					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/node_modules', {isPath: true}))",
+					operations: [
+						{
+							class: "Make.Spawn.File",
+							source: "npm",
+							shell: "true",
+							args: ['install'],
+							target: "%PACKAGEDIR%/test/test_app/"
+						}
+					]
+				},
+				{
+					class: "Make.Folder.Copy",
+					source: "%SOURCEDIR%/test/test_app/node_modules.rename_me",
+					destination: "%PACKAGEDIR%/test/test_app/node_modules"
+				},
+				{
+					class: "Make.File.Copy",
+					source: "%SOURCEDIR%/test/test_app/npmrc.rename_me",
+					destination: "%PACKAGEDIR%/test/test_app/.npmrc"
 				}
-				//{
-				//	class: "Make.Folder.Delete",
-				//	destination: "%BUILDDIR%"
-				//},
-				//{
-				//	class: "Make.Folder.Copy",
-				//	source: "%SOURCEDIR%",
-				//	destination: "%BUILDDIR%"
-				//}
 			]
 		},
 		test: {
@@ -53,13 +80,6 @@
 					class: "Make.If",
 					condition: "!tools.Files.existsSync(taskData.parseVariables('%PACKAGEDIR%/test/test_app/.npmrc', {isPath: true}))",
 					operations: [
-						{
-							class: "Make.Spawn.File",
-							source: "npm",
-							shell: "true",
-							args: ['install'],
-							target: "%PACKAGEDIR%/test/test_app/"
-						},
 						{
 							class: "Make.File.Copy",
 							source: "%PACKAGEDIR%/test/test_app/npmrc.rename_me",
