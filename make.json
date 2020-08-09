@@ -43,7 +43,7 @@
 				},
 				{
 					class: "Make.Folder.Delete",
-					destination: "%PACKAGEDIR%/test/test_app/node_modules.rename_me"
+					source: "%PACKAGEDIR%/test/test_app/node_modules.rename_me"
 				},
 				{
 					class: "Make.File.Delete",
