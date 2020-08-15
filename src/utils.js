@@ -44,8 +44,7 @@ module.exports = {
 			/* eslint import/no-dynamic-require: "off" */
 			/* eslint global-require: "off" */
 			return require(require.resolve(path, {paths: _module.paths}));
-		}
-		:
+		} :
 		function _require(_module, path) {
 			return nodeModule.Module._load(path, _module);
 		}
