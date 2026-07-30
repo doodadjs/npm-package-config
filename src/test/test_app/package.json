@@ -9,6 +9,6 @@
     "tomato": "green"
   },
   "dependencies": {
-    "tap": "^14.10.8"
+    "tap": "^21.7.5"
   }
 }
