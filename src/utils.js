@@ -28,7 +28,7 @@ THE SOFTWARE.
 const nodeModule = require('module');
 const compareVersions = require('compare-versions');
 
-const natives = require('./natives.js');
+const natives = require('./natives');
 
 module.exports = {
 	get: function _get(obj, key, /*optional*/defaultValue) {

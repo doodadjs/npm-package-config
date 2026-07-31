@@ -26,7 +26,7 @@ THE SOFTWARE.
 "use strict";
 
 
-const natives = require('./natives.js');
+const natives = require('./natives');
 
 
 const SYNC_PROMISE_STATE = natives.Symbol();

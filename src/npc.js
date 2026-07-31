@@ -31,9 +31,9 @@ const path = require('path'),
 	fs = require('fs');
 
 
-const natives = require('./natives.js');
-const utils = require('./utils.js');
-const SyncPromise = require('./SyncPromise.js');
+const natives = require('./natives');
+const utils = require('./utils');
+const SyncPromise = require('./SyncPromise');
 
 
 const PACKAGE_JSON_FILE = 'package.json';
