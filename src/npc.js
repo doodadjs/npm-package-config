@@ -125,7 +125,7 @@ const parse = function _parse(state, lines, /*optional*/section) {
 				let val = line.slice(posKey + 1).trim();
 				try {
 					val = JSON.parse(val);
-				} catch(ex) {
+				} catch {
 					// Do nothing
 				};
 				state.config[currentSection][key] = val;
@@ -136,7 +136,6 @@ const parse = function _parse(state, lines, /*optional*/section) {
 
 
 const combine = function _combine(state) {
-	/* eslint prefer-object-spread: "off" */
 	return Object.assign({}, state.config.package, state.config.global, state.config.user, state.config.project, state.config.env);
 };
 

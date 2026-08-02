@@ -1,11 +1,9 @@
 "use strict";
 
-const npm_package_config = require('../../../index.js');
+const npc = require('../../../index.js');
 
 const test = require('tap').test
 const cp = require('child_process');
-
-const config = npm_package_config.list()
 
 function cleanup() {
 	cp.execSync("npm config delete test_app:apple");
@@ -35,7 +33,7 @@ test('cli-Sync', function(t) {
 		tomato: 'green',
 		banana: 'split',
 	};
-	actual = npm_package_config.list();
+	actual = npc.list();
 	delete actual.package_version; // Will always change
 	t.strictSame(actual, expected, "Without override.")
 
@@ -49,7 +47,7 @@ test('cli-Sync', function(t) {
 		tomato: 'green',
 		banana: 'split',
 	};
-	actual = npm_package_config.list();
+	actual = npc.list();
 	delete actual.package_version; // Will always change
 	t.strictSame(actual, expected, "'apple' overriden by 'yellow'.")
 
@@ -63,7 +61,7 @@ test('cli-Sync-Cleanup', function(t) {
 });
 
 test('cli-Async', function(t) {
-	npm_package_config.list(null, {async: true})
+	npc.list(null, {async: true})
 		.then(function(actual) {
 			delete actual.package_version; // Will always change
 			const expected = {
@@ -79,7 +77,7 @@ test('cli-Async', function(t) {
 
 			cp.execSync("npm config set test_app:apple yellow");
 
-			return npm_package_config.list(null, {async: true});
+			return npc.list(null, {async: true});
 		})
 		.then(function(actual) {
 			delete actual.package_version; // Will always change

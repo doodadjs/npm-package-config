@@ -5,9 +5,9 @@
 const cp = require('child_process');
 const test = require('tap').test
 
-const npm_package_config = require('../../index.js');
+const npc = require('../../index.js');
 
-const packageA = require('package_a');
+require('package_a');
 
 function cleanup() {
 	cp.execSync("npm config delete test_app:apple");
@@ -40,7 +40,7 @@ test('test_app-Sync', function(t) {
 		tomato: 'green',
 		banana: 'split',
 	};
-	actual = npm_package_config.list();
+	actual = npc.list();
 	delete actual.package_version; // Will always change
 	t.strictSame(actual, expected, "Without override.")
 
@@ -54,7 +54,7 @@ test('test_app-Sync', function(t) {
 		tomato: 'green',
 		banana: 'split',
 	};
-	actual = npm_package_config.list();
+	actual = npc.list();
 	delete actual.package_version; // Will always change
 	t.strictSame(actual, expected, "'apple' overriden by 'yellow'.")
 
@@ -68,7 +68,7 @@ test('test_app-Cleanup', function(t) {
 });
 
 test('test_app-Async', function(t) {
-	npm_package_config.list(null, {async: true})
+	npc.list(null, {async: true})
 		.then(function(actual) {
 			delete actual.package_version; // Will always change
 			const expected = {
@@ -84,7 +84,7 @@ test('test_app-Async', function(t) {
 
 			cp.execSync("npm config set test_app:apple yellow");
 
-			return npm_package_config.list(null, {async: true});
+			return npc.list(null, {async: true});
 		})
 		.then(function(actual) {
 			delete actual.package_version; // Will always change
@@ -121,7 +121,7 @@ test('packageA-Sync', function(t) {
 		keyA: '1',
 		keyB: 2,
 	};
-	actual = npm_package_config.list('package_a');
+	actual = npc.list('package_a');
 	t.strictSame(actual, expected, "Without override.")
 
 	cp.execSync("npm config set package_a:keyA Hello");
@@ -134,7 +134,7 @@ test('packageA-Sync', function(t) {
 		keyA: 'Hello',
 		keyB: 2,
 	};
-	actual = npm_package_config.list('package_a');
+	actual = npc.list('package_a');
 	t.strictSame(actual, expected, "'keyA' overriden by 'Hello'.")
 
 	t.done();
@@ -147,7 +147,7 @@ test('packageA-Cleanup', function(t) {
 });
 
 test('packageA-Async', function(t) {
-	npm_package_config.list('package_a', {async: true})
+	npc.list('package_a', {async: true})
 		.then(function(actual) {
 			const expected = {
 				package_name: 'package_a',
@@ -162,7 +162,7 @@ test('packageA-Async', function(t) {
 
 			cp.execSync("npm config set package_a:keyA Hello");
 
-			return npm_package_config.list('package_a', {async: true});
+			return npc.list('package_a', {async: true});
 		})
 		.then(function(actual) {
 			const expected = {
